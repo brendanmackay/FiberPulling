@@ -487,13 +487,11 @@ toolbar_frame = tk.Frame(root)
 toolbar = NavigationToolbar2Tk( canvas, toolbar_frame )
 toolbar.update()
 
-
-event = threading.Event() #creates thread
-
 video_frame = tk.Frame(root, width=10, height=10)  # frame for the digital microscope
 video_label = tk.Label(video_frame)  # label for the microscope
 
 
+event = threading.Event() #creates thread
 #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 # prepare the widgets of the GUI for tapering
 Res_options = [ "High Resolution",

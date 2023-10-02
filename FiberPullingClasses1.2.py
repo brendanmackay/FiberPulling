@@ -33,8 +33,68 @@ class CameraControl:
         print("HI")
 
     def init_camera(self):
-        # Initialize camera and set up configurations
-        print("hi")
+        """Initialize the camera and set the global flag for camera connection."""
+        global camera_connected
+        global cap
+
+        camera_connected = False
+        cap = cv2.VideoCapture(1)  # attempt to capture video from the digital microscope
+
+        if cap.isOpened():  # check if we successfully opened the camera
+            camera_connected = True
+        else:
+            print("No camera found or unable to connect to camera!")
+
+    def create_blank_image(self, width, height):
+        """Create a blank white image of given dimensions."""
+        blank_img = np.ones((height, width, 4), dtype=np.uint8) * 255  # 4 channels: RGBA
+        return blank_img
+
+    def show_feed(self):
+        """Capture and display a frame from the camera (if connected),
+        or display a white image if no camera is connected."""
+        if camera_connected:
+            _, frame = cap.read()
+            frame = cv2.flip(frame, 0)
+            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        else:
+            cv2image = self.create_blank_image(500, 300)
+
+        img = Image.fromarray(cv2image).resize((500, 300))
+        imgtk = ImageTk.PhotoImage(image=img)
+        video_frame = tk.Frame(root, width=10, height=10)  # frame for the digital microscope
+        video_label = tk.Label(video_frame)  # label for the microscope
+        video_label.imgtk = imgtk  # Shows frame for display 1
+        video_label.configure(image=imgtk)
+        root.after(10, self.show_feed)
+
+    def save_power_meter_data(self):
+        # Assuming x_vals and y_vals are defined elsewhere to create mw_time
+        mw_time = np.array([self.x_vals, self.y_vals])
+
+        # Check if mw_time is not empty
+        if mw_time.size > 0:
+            # Get the current date and time
+            current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+            # Construct the file name with the current date and time
+            file_name = f"mW_f(t)_powermeter_electrode_1_{current_datetime}.npy"
+
+            # Specify the directory path
+            directory_path = r'C:\Users\brend\OneDrive - University of Calgary\Phys598\Fiber Data\Numpy Data'
+
+            # Combine the directory path and file name to create the full file path
+            file_path = directory_path + "\\" + file_name
+
+            np.save(file_path, mw_time)
+            print('Data saved.')
+        else:
+            print('mw_time is empty. Data not saved.')
+
+    def Clear(self):  # clears the plot
+        plt.cla()
+        self.x_vals.clear()
+        self.y_vals.clear()
 
     def capture_frame(self):
         # Capture a frame from the camera
@@ -48,10 +108,62 @@ class PowerMeterControl:
     def __init__(self):
         # Initialize power meter connection here, if applicable
         print("hi")
+        x_vals =  []
+        y_vals = []
+
+    def animate(self, new_time):  # reads the powermeter and updates the graph
+        self.x_vals.append(new_time)
+        self.y_vals.append(power_meter.read * 1000)
+        plt.cla()
+        plt.title("Power [mW] as a function of Time[s]")
+        plt.xlabel("Time [s]")
+        plt.ylabel("Power [mW]")
+        plt.grid()
+
+        plt.plot(self.x_vals, self.y_vals)
+
+    def check_power_meter_connection(root):
+        global pm
+        pm = False
+        rm = pyvisa.ResourceManager()  # majid PM code
+        res_avail = rm.list_resources()
+        print("resources:", res_avail)
+
+        dev_name = 'USB0::0x1313::0x8078::P0032080::INSTR'
+        if dev_name in res_avail:  # if the device is connected
+            inst = rm.open_resource(dev_name)
+            global power_meter
+            power_meter = ThorlabsPM100(inst=inst)
+            print(inst.query("*IDN?"))
+            init = power_meter.read
+            pm = True
+            print('initial value:', float(init))
+            return pm, float(init)  # Return pm status and initial value
+
+        else:  # if device is not connected
+            error_label = tk.Label(root, text="Power meter not connected. Graph will not display")
+            error_label.grid(row=6, column=6, padx=5, pady=7)
+            print("Power Meter not connected")
+            return pm, None  # Return pm status and None for initial value
+
+
+    def Readline(self):  # read lines from the arduino to see when to turn off the live updating graph and timer
+        print("Readline activated")
+        while 1:
+            line = self.arduino_control.read_until('\n').decode('utf-8')
+            print('line: ', line)
+            print('bool:', line.startswith("P"))
+            if len(line) > 0:
+                result = line.startswith("P")
+                print(result)
+                if result == True:
+                    # Timer_Stop()
+                    print("done")
+                    break
+
     def connect_power_meter(self):
         # Establish a connection to the power meter
         print("hi")
-
 
     def read_power_meter(self):
         # Read power meter data
@@ -68,7 +180,7 @@ class ArduinoControl:
         self.connection_status = "Not Connected"  # Initialize status as "Not Connected"
         self.auto_connect()
 
-    def toggle_electrodes_state(self):
+    def toggle_electrodes_state(self):  # This function turns electrodes on and off
         if self.electrode_state:
             self.electrode_state = False
             self.send_command('RLY_OF\n')
@@ -78,6 +190,15 @@ class ArduinoControl:
 
         print(self.electrode_state)
 
+
+    def emergency_stop(self):       # This function is the emergency stop button
+        self.send_command('EMG_STP\n')
+        print("Emergency Stop Activated")
+
+    def refresh_ports(self):
+        # Get a list of all available COM ports using pyserial's list_ports method.
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+        return ports
 
     def connect_arduino(self, selected_port):
         if selected_port != 'Select port':
@@ -99,6 +220,7 @@ class ArduinoControl:
             except:
                 continue
         self.connection_status = "Auto-connect failed."
+
 
     def send_command(self, command):
         if self.arduino:
@@ -127,12 +249,16 @@ class MotorControl:
         command = "STOP\n"
         self.arduino_control.send_command(command)
 
+    def reset(self):
+        time.sleep(0.1)
+        self.arduino_control.send_command('HOME\n')
+        print("Resetting")
 
     def center_taper(self):
         # Logic for centering the taper between electrodes
         # Example: Send a command to the Arduino to center the taper
-        command = "CENTER_TAPER\n"
-        self.arduino_control.send_command(command)
+        self.arduino_control.send_command('CENTR\n')
+        print('centering')
 
     def initiate_pulling(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, enab_selection,
                                             Res1_selection, Res2_selection, prht_entry):
@@ -194,6 +320,10 @@ class MotorControl:
         time.sleep(0.1)
         self.arduino_control.send_command(Time)
 
+    def decelerate(self):
+        self.arduino_control.send_command('DECEL\n')  # electrodes
+        print("Decelerating")
+
     def dimple_taper(self, speed, depth, time_delay):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
@@ -215,7 +345,6 @@ class MotorControl:
         self.arduino_control.send_command(Depth_val)  # Removed encode() here
         print("Dimpling")
 
-
 class SetupGUI:
     def __init__(self, root, motor_control, arduino_control):
         self.root = root
@@ -230,30 +359,26 @@ class SetupGUI:
         main_frame = Frame(self.root)
         main_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Configure the grid layout
-        main_frame.grid_rowconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(1, weight=1)
-        main_frame.grid_rowconfigure(2, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
-        main_frame.grid_columnconfigure(1, weight=1)
-
         # Create and place buttons on GUI
-        self.old_GUI()
+        self.setup_gui()
 
-    def old_GUI(self):
+    def setup_gui(self):
         root.title('Fiber Pulling')
+        self.tapering_setup()
+        self.dynamic_button_setup()
+        self.dimpling_setup()
+        self.arduino_setup()
 
-        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    def tapering_setup(self):
         # prepare the widgets of the GUI for tapering
-        Res_options = ["High Resolution",
-                       "Mid Resolution",  # resolution options
-                       "Low Resolution"]
-
-        self.text1 = tk.Label(root, text="Tapering:", font=(15))
+        self.tapering_label = tk.Label(root, text="Tapering:", font=(15))
+        self.tapering_label.grid(row=0, column=0, padx=10, pady=7)
 
         self.timer_Label = tk.Label(root, text="Time Elapsed:")  # timer
         self.timer_time = tk.Label(root, text="0.0s")
 
+        # Prepare GUI for Tapering
+        Res_options = ["High Resolution", "Mid Resolution", "Low Resolution"]
         self.Res1_selection = tk.StringVar()  # resoution 1 labels and option menu
         self.Res1_selection.set(Res_options[0])
         self.Res1_label = tk.Label(root, text="Resolution Motor 1: ", font=("Arial", 10))
@@ -273,41 +398,43 @@ class SetupGUI:
         self.enab_label = tk.Label(root, text="Enable Motors?: ", font=("Arial", 10))
         self.enab_entry = tk.OptionMenu(root, self.enab_selection, *self.enab_options)
 
-        self.Speed1_label = tk.Label(root, text="Speed Motor 1: ", font=("Arial", 10))  # Speed 1 labels and entry widgets
+        self.Speed1_label = tk.Label(root, text="Speed Motor 1: ",
+                                     font=("Arial", 10))  # Speed 1 labels and entry widgets
         self.s1_def = IntVar()
         self.Speed1_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
         self.Speed1_entry = tk.Entry(root, text=self.s1_def, font=("Arial", 10))
         self.s1_def.set(38)
 
-        self.Speed2_label = tk.Label(root, text="Speed Motor 2: ", font=("Arial", 10))  # Speed 2 Labels and entry widgets
+        self.Speed2_label = tk.Label(root, text="Speed Motor 2: ",
+                                     font=("Arial", 10))  # Speed 2 Labels and entry widgets
         self.s2_def = IntVar()
         self.Speed2_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
         self.Speed2_entry = tk.Entry(root, text=self.s2_def, font=("Arial", 10))
         self.s2_def.set(930)
 
         self.Accel1_label = tk.Label(root, text="Acceleration Motor 1: ",
-                                font=("Arial", 10))  # acceleration 1 labels and entry widgets
+                                     font=("Arial", 10))  # acceleration 1 labels and entry widgets
         self.Accel1_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
         self.A1_def = IntVar()
         self.Accel1_entry = tk.Entry(root, text=self.A1_def, font=("Arial", 10))
         self.A1_def.set(6)
 
         self.Decel1_label = tk.Label(root, text="Deceleration Motor 1: ",
-                                font=("Arial", 10))  # deceleration 1 labels and entry widgets
+                                     font=("Arial", 10))  # deceleration 1 labels and entry widgets
         self.Decel1_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
         self.D1_def = IntVar()
         self.Decel1_entry = tk.Entry(root, text=self.D1_def, font=("Arial", 10))
         self.D1_def.set(6)
 
         self.Accel2_label = tk.Label(root, text="Acceleration Motor 2: ",
-                                font=("Arial", 10))  # acceleration 2 labels and entry widgets
+                                     font=("Arial", 10))  # acceleration 2 labels and entry widgets
         self.Accel2_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
         self.A2_def = IntVar()
         self.Accel2_entry = tk.Entry(root, text=self.A2_def, font=("Arial", 10))
         self.A2_def.set(160)
 
         self.Decel2_label = tk.Label(root, text="Deceleration Motor 2: ",
-                                font=("Arial", 10))  # deceleration 1 labels and entry widgets
+                                     font=("Arial", 10))  # deceleration 1 labels and entry widgets
         self.Decel2_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
         self.D2_def = IntVar()
         self.Decel2_entry = tk.Entry(root, text=self.D2_def, font=("Arial", 10))
@@ -325,48 +452,17 @@ class SetupGUI:
         self.TimeD_entry = tk.Entry(root, text=self.TD_def, font=("Arial", 10))
         self.TD_def.set(1)
 
-        self.elec_toggle = tk.Button(text="electrodes on/off", command=lambda: arduino_control.toggle_electrodes_state(),
-            font=("Arial", 10))
+        self.Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
+        self.Res1_entry.grid(row=1, column=4, padx=5, pady=7)
 
-        self.Automate_button = tk.Button(text="Automate Dimple", font=("Arial", 10))
+        self.Res2_label.grid(row=2, column=3, padx=5, pady=7)  # resolution 2 widget placements
+        self.Res2_entry.grid(row=2, column=4, padx=5, pady=7)
 
-        self.Run_button = tk.Button(text="Run",font=("Arial", 10), command=self.initiate_pulling_button_pressed)
-        self.Emg_button = tk.Button(text="EMERGENCY STOP",)
-        self.Reset_button = tk.Button(text="Reset",
-                                 font=("Arial", 10))
-        self.decel_button = tk.Button(text="Decelerate")
+        self.enab_label.grid(row=3, column=3, padx=5, pady=7)  # enable 1 widget placements
+        self.enab_entry.grid(row=3, column=4, padx=5, pady=7)
 
-        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        # prepare the widgets of the GUI for dimpling
-
-        self.text2 = tk.Label(root, text="Dimpling:", font=(15))
-
-        self.Speed3_label = tk.Label(root, text="Speed Motor 3: ", font=("Arial", 10))  # Speed 1 labels and entry widgets
-        self.s3_def = IntVar()
-        self.Speed3_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
-        self.Speed3_entry = tk.Entry(root, text=self.s3_def, font=("Arial", 10))
-        self.s3_def.set(1000)
-
-        self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
-        self.Depth_selection.set(20)
-        self.Depth_label = tk.Label(root, text="Dimple depth: ", font=("Arial", 10))
-        self.Depth_entry = tk.Entry(root, text=self.Depth_selection, font=("Arial", 10))
-        self.Depth_units = tk.Label(root, text="Steps", font=("Arial", 10))
-
-        self.Center_button = tk.Button(text="Center",
-                                  font=("Arial", 10))
-        self.Dimple_button = tk.Button(root, text="Dimple", font=("Arial", 10), command=self.dimple_taper_button_pressed)
-
-
-        # Create buttons for connecting to arduino
-        self.refresh_button = tk.Button(root, text="Refresh Ports")
-        self.connection_status_label = tk.Label(root)
-        self.connect_button = tk.Button(root, text="Connect to Arduino")
-        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        # grid spacing for all the widgets
-
-        self.text1.grid(row=0, column=0, padx=10, pady=7)
-        self.text2.grid(row=10, column=0, pady=7)
+        self.timer_Label.grid(row=7, column=3)  # timer widget placements
+        self.timer_time.grid(row=7, column=4)
 
         self.Speed1_label.grid(row=1, column=0, pady=7)  # Speed 1 widget placements
         self.Speed1_units.grid(row=1, column=2, pady=7)
@@ -375,10 +471,6 @@ class SetupGUI:
         self.Speed2_label.grid(row=2, column=0, pady=7)  # Speed 2 widget placements
         self.Speed2_units.grid(row=2, column=2, pady=7)
         self.Speed2_entry.grid(row=2, column=1, pady=7)
-
-        self.Speed3_label.grid(row=11, column=0, pady=7)  # Speed 3 widget placements
-        self.Speed3_units.grid(row=11, column=2, pady=7)
-        self.Speed3_entry.grid(row=11, column=1, pady=7)
 
         self.Accel1_label.grid(row=3, column=0, pady=7)  # acceleration 1 widget placements
         self.Accel1_units.grid(row=3, column=2)
@@ -396,42 +488,89 @@ class SetupGUI:
         self.Decel2_units.grid(row=6, column=2)
         self.Decel2_entry.grid(row=6, column=1, pady=7)
 
-        self.Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
-        self.Res1_entry.grid(row=1, column=4, padx=5, pady=7)
-
-        self.Res2_label.grid(row=2, column=3, padx=5, pady=7)  # resolution 2 widget placements
-        self.Res2_entry.grid(row=2, column=4, padx=5, pady=7)
-
-        self.Depth_label.grid(row=12, column=0, padx=5, pady=7)  # resolution 1 widget placements
-        self.Depth_entry.grid(row=12, column=1, padx=5, pady=7)
-        self.Depth_units.grid(row=12, column=2, padx=5, pady=7)
-
-        self.enab_label.grid(row=3, column=3, padx=5, pady=7)  # enable 1 widget placements
-        self.enab_entry.grid(row=3, column=4, padx=5, pady=7)
-
-        self.timer_Label.grid(row=7, column=3)  # timer widget placements
-        self.timer_time.grid(row=7, column=4)
+        self.prht_label.grid(row=7, column=0, pady=7)  # preheat widgets placements
+        self.prht_entry.grid(row=7, column=1, pady=7)
+        self.prht_units.grid(row=7, column=2, pady=7)
 
         self.TimeD_label.grid(row=13, column=0, pady=7)  # time delay dimple widgets placements
         self.TimeD_units.grid(row=13, column=2)
         self.TimeD_entry.grid(row=13, column=1, pady=7)
 
-        self.prht_label.grid(row=7, column=0, pady=7)  # preheat widgets placements
-        self.prht_entry.grid(row=7, column=1, pady=7)
-        self.prht_units.grid(row=7, column=2, pady=7)
+    def dynamic_button_setup(self):
+        self.elec_toggle_button = tk.Button(text="electrodes on/off",
+                                     command=lambda: arduino_control.toggle_electrodes_state(),
+                                     font=("Arial", 10))
 
-        self.connect_button.grid(row=4, column=5, padx=5, pady=7)
-        self.refresh_button.grid(row=5, column=4, padx=5, pady=7)
-        self.connection_status_label.grid(row=5, column=5, padx=5, pady=7)
+        self.Automate_button = tk.Button(text="Automate Dimple", font=("Arial", 10))
+
+        self.Run_button = tk.Button(text="Run", font=("Arial", 10), command=self.initiate_pulling_button_pressed)
+        self.Emg_button = tk.Button(text="EMERGENCY STOP", command=self.arduino_control.emergency_stop)
+        self.Reset_button = tk.Button(text="Reset", command=self.motor_control.reset, font=("Arial", 10))
+        self.decel_button = tk.Button(text="Decelerate", command=self.motor_control.decelerate)
+
+        self.Center_button = tk.Button(text="Center", command=self.motor_control.center_taper,
+                                       font=("Arial", 10))
+        self.Dimple_button = tk.Button(root, text="Dimple", font=("Arial", 10),
+                                       command=self.dimple_taper_button_pressed)
 
         self.Run_button.grid(row=9, column=1, padx=15, pady=7)  # button widget placements
         self.Emg_button.grid(row=10, column=4, rowspan=3, columnspan=2, padx=10, pady=7)
         self.Reset_button.grid(row=9, column=0, padx=15, pady=7)
-        self.elec_toggle.grid(row=6, column=4)
+        self.elec_toggle_button.grid(row=6, column=4)
         self.Center_button.grid(row=14, column=1, pady=7)
         self.Dimple_button.grid(row=14, column=3, pady=7)
         self.Automate_button.grid(row=14, column=5, pady=7)
         self.decel_button.grid(row=9, column=3, pady=7)
+
+    def dimpling_setup(self):
+        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        # prepare the widgets of the GUI for dimpling
+        self.text2 = tk.Label(root, text="Dimpling:", font=(15))
+        self.text2.grid(row=10, column=0, pady=7)
+
+
+        self.Speed3_label = tk.Label(root, text="Speed Motor 3: ",
+                                     font=("Arial", 10))  # Speed 3 labels and entry widgets
+        self.s3_def = IntVar()
+        self.Speed3_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
+        self.Speed3_entry = tk.Entry(root, text=self.s3_def, font=("Arial", 10))
+        self.s3_def.set(1000)
+
+        self.Speed3_label.grid(row=11, column=0, pady=7)  # Speed 3 widget placements
+        self.Speed3_units.grid(row=11, column=2, pady=7)
+        self.Speed3_entry.grid(row=11, column=1, pady=7)
+
+        self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
+        self.Depth_selection.set(20)
+        self.Depth_label = tk.Label(root, text="Dimple depth: ", font=("Arial", 10))
+        self.Depth_entry = tk.Entry(root, text=self.Depth_selection, font=("Arial", 10))
+        self.Depth_units = tk.Label(root, text="Steps", font=("Arial", 10))
+
+
+
+        self.Depth_label.grid(row=12, column=0, padx=5, pady=7)  # resolution 1 widget placements
+        self.Depth_entry.grid(row=12, column=1, padx=5, pady=7)
+        self.Depth_units.grid(row=12, column=2, padx=5, pady=7)
+
+    def arduino_setup(self):
+
+        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        # Create buttons for connecting to arduino
+        self.port_label = tk.Label(root, text="Select Port: ", font=("Arial", 10))
+        self. port_dropdown = tk.OptionMenu(root, "Select Port", "Select Port")
+        self.port_var = tk.StringVar()  # allows you to select your port
+        self.port_var.set("Select Port")
+
+        self.port_label = tk.Label()
+        self.refresh_button = tk.Button(root, text="Refresh Ports",command=self.refresh_ports)
+        self.connection_status_label = tk.Label(root, text=self.arduino_control.connection_status)
+        self.connect_button = tk.Button(root, text="Connect to Arduino")
+
+        self.port_label.grid(row=4, column=3, padx=5, pady=7)  # ports widgets placements
+        self.port_dropdown.grid(row=4, column=4, padx=5, pady=7)
+        self.connect_button.grid(row=4, column=5, padx=5, pady=7)
+        self.refresh_button.grid(row=5, column=4, padx=5, pady=7)
+        self.connection_status_label.grid(row=5, column=5, padx=5, pady=7)
 
     def dimple_taper_button_pressed(self):
         speed = self.s3_def.get()
@@ -463,6 +602,19 @@ class SetupGUI:
         self.motor_control.initiate_pulling(Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, enab_selection, Res1_selection, Res2_selection, prht_entry)
     # Define other methods related to motor control GUI elements
 
+    def refresh_ports(self):
+        # Call the ArduinoControl's refresh_ports method to get the list of ports
+        ports = self.arduino_control.refresh_ports()
+
+        # Reset the default value of the dropdown menu to 'Select port'.
+        self.port_var.set('Select port')
+
+        # Clear all current options in the dropdown menu.
+        self.port_dropdown["menu"].delete(0, "end")
+
+        # For each available port, add it as an option in the dropdown menu.
+        for p in ports:
+            self.port_dropdown["menu"].add_command(label=p, command=tk._setit(self.port_var, p))
 
 if __name__ == "__main__":
     root = tk.Tk()
