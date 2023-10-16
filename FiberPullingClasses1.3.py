@@ -211,11 +211,39 @@ class ArduinoControl:
 class MotorControl:
     def __init__(self, arduino_control):
         self.arduino_control = arduino_control
-
+        self.knife_position = True          # True if knife is up
     def reset(self):
         time.sleep(0.1)
         self.arduino_control.send_command('HOME\n')
         print("Resetting")
+
+    def calibrate_knife(self):
+        if self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNIFD\n')
+            self.knife_position = False
+            print("Knife Down")
+
+        else:
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNIFU\n')
+            self.knife_position = True
+            print("Knife Up")
+
+    def calibrate_down_knife(self):
+        if not self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNDTH\n') # Knife Down Thousand Steps
+            self.knife_position = False
+            print("Knife Down 100")
+
+    def calibrate_up_knife(self):
+        if not self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KFUTH\n') # Knife Up Thousand Steps
+            self.knife_position = False
+            print("Knife Up 100")
+
 
     def center_taper(self):
         # Logic for centering the taper between electrodes
@@ -339,7 +367,7 @@ class MotorControl:
                 break
             time.sleep(1)
 
-        self.move_motor_1(speed=50, steps=-20)
+        # self.move_motor_1(speed=50, steps=-20)
 
         # Dimple the taper
         self.dimple(dimple_speed, dimple_depth, dimple_time_delay)
@@ -457,7 +485,7 @@ class SetupGUI:
         # Setup Matplotlib Plot
         self.fig, self.ax = plt.subplots(figsize=(5, 4))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-        self.canvas.get_tk_widget().grid(row= 1, column=10, rowspan=10, columnspan=10)
+        self.canvas.get_tk_widget().grid(row= 0, column=6, rowspan=10, columnspan=10)
 
         # Add a title to the plot
         self.ax.set_title("Power Meter Plot")
@@ -555,7 +583,7 @@ class SetupGUI:
         self.prht_units = tk.Label(root, text="s", font=("Arial", 10))
         self.prht_def = IntVar()
         self.prht_entry = tk.Entry(root, width=6, text=self.prht_def, font=("Arial", 10))
-        self.prht_def.set(0.8)
+        self.prht_def.set(0.5)
 
         self.TimeD_label = tk.Label(root, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
         self.TimeD_units = tk.Label(root, text="s", font=("Arial", 10))
@@ -626,7 +654,13 @@ class SetupGUI:
         self.Dimple_button = tk.Button(text="Dimple", font=("Arial", 10),
                                        command=self.dimple_button_pressed)
 
+        self.Calibrate_button = tk.Button(text="Calibrate Knife", font=("Arial", 10),
+                                          command=self.motor_control.calibrate_knife)
 
+        self.Calibrate_up_button = tk.Button(text="Move Knife Up", font=("Arial", 10),
+                                          command=self.motor_control.calibrate_up_knife)
+        self.Calibrate_down_button = tk.Button(text="Move Knife Down", font=("Arial", 10),
+                                             command=self.motor_control.calibrate_down_knife)
         # Button placement on GUI
         self.elec_toggle_button.grid(row=12, column=3)
         self.Emg_button.grid(row=12, column=4)
@@ -635,6 +669,9 @@ class SetupGUI:
         self.Center_button.grid(row=14, column=3, pady=7)
         self.Dimple_button.grid(row=14, column=4, pady=7)
         self.Reset_button.grid(row=14, column=5, pady=7)
+        self.Calibrate_button.grid(row=14, column=6, pady=7)
+        self.Calibrate_up_button.grid(row=13, column = 7)
+        self.Calibrate_down_button.grid(row=14, column = 7)
         self.Automate_dimple_button.grid(row=9, column=0, padx=15, pady=7)
         self.Automate_taper_button.grid(row=9, column=1, padx=15,pady=7)
 
