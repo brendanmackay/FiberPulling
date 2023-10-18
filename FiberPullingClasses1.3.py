@@ -109,6 +109,8 @@ class PowerMeterControl:
         self.dev_name = 'USB0::0x1313::0x8078::P0032080::INSTR'
         self.power_meter = None
         self.connection_status = self.connect()
+        self.time_data = []
+        self.power_data = []
 
     def is_connected(self):
         res_avail = self.rm.list_resources()
@@ -128,21 +130,10 @@ class PowerMeterControl:
 
     def read_power(self):
         if self.power_meter and self.connection_status:
-            return self.power_meter.read()
+            return self.power_meter.read
             #return float(self.power_meter.read())
         else:
             return None
-
-    def animate(self, new_time):  # reads the powermeter and updates the graph
-        self.x_vals.append(new_time)
-        self.y_vals.append(power_meter.read * 1000)
-        plt.cla()
-        plt.title("Power [mW] as a function of Time[s]")
-        plt.xlabel("Time [s]")
-        plt.ylabel("Power [mW]")
-        plt.grid()
-
-        plt.plot(self.x_vals, self.y_vals)
 
     def save_power_meter_data(self, data):
         # Save power meter data to a file
@@ -435,7 +426,6 @@ class MotorControl:
     def move_motor_2(self, speed, steps):       # This function is broken for some reason
         """
         Moves Motor 1 at the specified speed for a set number of steps.
-
         Parameters:
         - speed (int): Desired speed for Motor 1.
         - steps (int): Number of steps Motor 1 should move. Positive values for forward movement, negative for backward.
@@ -467,6 +457,9 @@ class SetupGUI:
     def __init__(self, root, motor_control, arduino_control, power_meter):
         self.root = root
         self.root.title("Fiber Pulling App")
+
+        # Initialize self.line as None
+        #self.line = None
 
         # Store references to the motor control, Arduino control, and power meter instances
         self.motor_control = motor_control
@@ -506,21 +499,25 @@ class SetupGUI:
         # Create and place buttons on GUI
         self.setup_gui()
 
+        # Start the periodic update of the power meter plot
+        self.update_power_meter_plot_periodically()
+
+
     def setup_gui(self):
         root.title('Fiber Pulling')
         self.tapering_setup()
         self.dynamic_button_setup()
         self.dimpling_setup()
         self.update_electrode_status()
-#        self.power_meter_plot_setup()
+        self.power_meter_plot_setup()
         self.connection_status_setup()
 
     def power_meter_plot_setup(self):
         if self.power_meter.get_connection_status():
             # Setup Matplotlib Plot
             self.fig, self.ax = plt.subplots(figsize=(5, 4))
-            self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-            self.canvas.get_tk_widget().grid(row= 0, column=6, rowspan=10, columnspan=10)
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.power_meter_frame)
+            self.canvas.get_tk_widget().grid(row=0, column=0)
 
             # Add a title to the plot
             self.ax.set_title("Power Meter Plot")
@@ -529,26 +526,30 @@ class SetupGUI:
             self.ax.set_xlabel("Time (s)")
             self.ax.set_ylabel("Voltage (mW)")
 
-            # Initial data setup
-            self.x_data = np.linspace(0, 10, 100)  # replace with your X axis range
-            self.y_data = np.zeros(100)
-            self.line, = self.ax.plot(self.x_data, self.y_data)
-
+            self.line, = self.ax.plot(self.power_meter.power_data, self.power_meter.time_data, label='Power')  # Define 'line' here
+            print("line")
             # Call animation method (You can adjust the interval as needed)
             self.update_power_meter_plot()
 
     def update_power_meter_plot(self):
-        # Get new data from the power meter
-        power = self.power_meter.read_power()
-        if power is not None:
-            # Shift old data to the left
-            self.y_data[:-1] = self.y_data[1:]
-            # Append new data to the rightmost side
-            self.y_data[-1] = power
-            self.line.set_ydata(self.y_data)
-            self.ax.relim()
-            self.ax.autoscale_view()
-            self.canvas.draw()
+        if self.power_meter.get_connection_status():
+            # Call the read_power method from your PowerMeterControl instance
+            power = self.power_meter.read_power()
+
+            if power is not None:
+                self.power_meter.time_data.append(time.time())  # Replace with how you're getting the time
+                self.power_meter.power_data.append(power)
+
+                # Update the plot with the new data
+                self.line.set_xdata(self.power_meter.time_data)
+                self.line.set_ydata(self.power_meter.power_data)
+
+                # Adjust the plot limits if needed
+                self.ax.relim()
+                self.ax.autoscale_view()
+
+                # Redraw the canvas
+                self.canvas.draw()
 
     def tapering_setup(self):
         # Prepare GUI for Tapering
@@ -850,11 +851,11 @@ class SetupGUI:
             print("Error", "Arduino is not connected.")
             return
 
+
         thread = threading.Thread(target=self.motor_control.automate_dimple, args=(Speed1_entry, Speed2_entry, Accel1_entry,
                                     Accel2_entry, Decel1_entry, Decel2_entry, enab_selection, Res1_selection,
                                     Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_time_delay))
         thread.start()
-
     def automate_taper_button_pressed(self):
         Speed1_entry = self.Speed1_entry.get()
         Speed2_entry = self.Speed2_entry.get()
@@ -879,20 +880,14 @@ class SetupGUI:
                                                                             Res2_selection, prht_entry))
         thread.start()
 
-    def refresh_ports(self):
-        # Call the ArduinoControl's refresh_ports method to get the list of ports
-        ports = self.arduino_control.refresh_ports()
 
-        # Reset the default value of the dropdown menu to 'Select port'.
-        self.port_var.set('Select port')
+    def update_power_meter_plot_periodically(self):
+        if self.power_meter.get_connection_status():
+            # Call the function to update the power meter plot
+            self.update_power_meter_plot()
 
-        # Clear all current options in the dropdown menu.
-        self.port_dropdown["menu"].delete(0, "end")
-
-        # For each available port, add it as an option in the dropdown menu.
-        for p in ports:
-            self.port_dropdown["menu"].add_command(label=p, command=tk._setit(self.port_var, p))
-
+            # Schedule the next update using the 'after' method
+            self.root.after(100, self.update_power_meter_plot_periodically)
 
     '''def on_closing(self):
         try:
