@@ -474,8 +474,31 @@ class SetupGUI:
         self.power_meter = power_meter
 
         # Create and configure the main frame
-        main_frame = Frame(self.root)
-        main_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        main_frame = tk.Frame(self.root)
+        main_frame.grid(row=0, column=0, sticky="nsew")
+
+        # Create three vertical subframes
+        self.connection_status_frame = tk.Frame(main_frame)
+        self.connection_status_frame.grid(row=0, column=0, columnspan=3, sticky="nsew")
+
+        self.subframe1 = tk.Frame(main_frame)
+        self.subframe1.grid(row=1, column=0, sticky="nsew", padx=10)
+
+        self.subframe2 = tk.Frame(main_frame)
+        self.subframe2.grid(row=2, column=0, sticky="nsew", padx=10)
+
+        self.dynamic_button_frame = tk.Frame(main_frame)
+        self.dynamic_button_frame.grid(row=1, column=1, rowspan=2, sticky="nsew", padx=10)
+
+        self.power_meter_frame = tk.Frame(main_frame, width=400, height=300, bg = "white")
+        self.power_meter_frame.grid(row=1, column=2, sticky="nsew", pady=10, padx=10)
+
+        self.camera_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
+        self.camera_frame.grid(row=2, column = 2, sticky="nsew", pady=10, padx=10)
+
+        # Configure column and row weights to make subframes expand with window resizing
+        main_frame.columnconfigure((0, 1), weight=1)
+        main_frame.rowconfigure((0, 1), weight=1)
 
         # Set up the protocol for handling window closure
         # self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -489,29 +512,30 @@ class SetupGUI:
         self.dynamic_button_setup()
         self.dimpling_setup()
         self.update_electrode_status()
-        self.power_meter_plot_setup()
+#        self.power_meter_plot_setup()
         self.connection_status_setup()
 
     def power_meter_plot_setup(self):
-        # Setup Matplotlib Plot
-        self.fig, self.ax = plt.subplots(figsize=(5, 4))
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-        self.canvas.get_tk_widget().grid(row= 0, column=6, rowspan=10, columnspan=10)
+        if self.power_meter.get_connection_status():
+            # Setup Matplotlib Plot
+            self.fig, self.ax = plt.subplots(figsize=(5, 4))
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+            self.canvas.get_tk_widget().grid(row= 0, column=6, rowspan=10, columnspan=10)
 
-        # Add a title to the plot
-        self.ax.set_title("Power Meter Plot")
+            # Add a title to the plot
+            self.ax.set_title("Power Meter Plot")
 
-        # Optionally, if you want to set labels for x and y axes:
-        self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("Voltage (mW)")
+            # Optionally, if you want to set labels for x and y axes:
+            self.ax.set_xlabel("Time (s)")
+            self.ax.set_ylabel("Voltage (mW)")
 
-        # Initial data setup
-        self.x_data = np.linspace(0, 10, 100)  # replace with your X axis range
-        self.y_data = np.zeros(100)
-        self.line, = self.ax.plot(self.x_data, self.y_data)
+            # Initial data setup
+            self.x_data = np.linspace(0, 10, 100)  # replace with your X axis range
+            self.y_data = np.zeros(100)
+            self.line, = self.ax.plot(self.x_data, self.y_data)
 
-        # Call animation method (You can adjust the interval as needed)
-        self.update_power_meter_plot()
+            # Call animation method (You can adjust the interval as needed)
+            self.update_power_meter_plot()
 
     def update_power_meter_plot(self):
         # Get new data from the power meter
@@ -531,75 +555,75 @@ class SetupGUI:
         Res_options = ["High Resolution", "Mid Resolution", "Low Resolution"]
         self.Res1_selection = tk.StringVar()  # resoution 1 labels and option menu
         self.Res1_selection.set(Res_options[0])
-        self.Res1_label = tk.Label(root, text="Resolution Motor 1: ", font=("Arial", 10))
-        self.Res1_entry = tk.OptionMenu(root, self.Res1_selection, *Res_options)
+        self.Res1_label = tk.Label(self.subframe1, text="Resolution Motor 1: ", font=("Arial", 10))
+        self.Res1_entry = tk.OptionMenu(self.subframe1, self.Res1_selection, *Res_options)
         self.Res1_entry['menu'].configure(font=('Arial', 10))
 
         self.Res2_selection = tk.StringVar()  # resolution 2 labels and option menu
         self.Res2_selection.set(Res_options[1])
-        self.Res2_label = tk.Label(root, text="Resolution Motor 2: ", font=("Arial", 10))
-        self.Res2_entry = tk.OptionMenu(root, self.Res2_selection, *Res_options)
+        self.Res2_label = tk.Label(self.subframe1, text="Resolution Motor 2: ", font=("Arial", 10))
+        self.Res2_entry = tk.OptionMenu(self.subframe1, self.Res2_selection, *Res_options)
         self.Res2_entry['menu'].configure(font=('Arial', 10))
 
         self.enab_options = ["Yes", "No"]  # enable options
 
         self.enab_selection = tk.StringVar()  # enable label and option menu
         self.enab_selection.set(self.enab_options[0])
-        self.enab_label = tk.Label(root, text="Enable Motors?: ", font=("Arial", 10))
-        self.enab_entry = tk.OptionMenu(root, self.enab_selection, *self.enab_options)
+        self.enab_label = tk.Label(self.subframe1, text="Enable Motors?: ", font=("Arial", 10))
+        self.enab_entry = tk.OptionMenu(self.subframe1, self.enab_selection, *self.enab_options)
 
-        self.Speed1_label = tk.Label(root, text="Speed Motor 1: ",
+        self.Speed1_label = tk.Label(self.subframe1, text="Speed Motor 1: ",
                                      font=("Arial", 10))  # Speed 1 labels and entry widgets
         self.s1_def = IntVar()
-        self.Speed1_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
-        self.Speed1_entry = tk.Entry(root, width=6, text=self.s1_def, font=("Arial", 10))
+        self.Speed1_units = tk.Label(self.subframe1, text="Steps/s", font=("Arial", 10))
+        self.Speed1_entry = tk.Entry(self.subframe1, width=6, text=self.s1_def, font=("Arial", 10))
         self.s1_def.set(38)
 
-        self.Speed2_label = tk.Label(root, text="Speed Motor 2: ",
+        self.Speed2_label = tk.Label(self.subframe1, text="Speed Motor 2: ",
                                      font=("Arial", 10))  # Speed 2 Labels and entry widgets
         self.s2_def = IntVar()
-        self.Speed2_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
-        self.Speed2_entry = tk.Entry(root,width=6, text=self.s2_def, font=("Arial", 10))
+        self.Speed2_units = tk.Label(self.subframe1, text="Steps/s", font=("Arial", 10))
+        self.Speed2_entry = tk.Entry(self.subframe1,width=6, text=self.s2_def, font=("Arial", 10))
         self.s2_def.set(930)
 
-        self.Accel1_label = tk.Label(root, text="Acceleration Motor 1: ",
+        self.Accel1_label = tk.Label(self.subframe1, text="Acceleration Motor 1: ",
                                      font=("Arial", 10))  # acceleration 1 labels and entry widgets
-        self.Accel1_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
+        self.Accel1_units = tk.Label(self.subframe1, text="Steps/s\u00b2", font=("Arial", 10))
         self.A1_def = IntVar()
-        self.Accel1_entry = tk.Entry(root, width=6, text=self.A1_def, font=("Arial", 10))
+        self.Accel1_entry = tk.Entry(self.subframe1, width=6, text=self.A1_def, font=("Arial", 10))
         self.A1_def.set(6)
 
-        self.Decel1_label = tk.Label(root, text="Deceleration Motor 1: ",
+        self.Decel1_label = tk.Label(self.subframe1, text="Deceleration Motor 1: ",
                                      font=("Arial", 10))  # deceleration 1 labels and entry widgets
-        self.Decel1_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
+        self.Decel1_units = tk.Label(self.subframe1, text="Steps/s\u00b2", font=("Arial", 10))
         self.D1_def = IntVar()
-        self.Decel1_entry = tk.Entry(root, width=6, text=self.D1_def, font=("Arial", 10))
+        self.Decel1_entry = tk.Entry(self.subframe1, width=6, text=self.D1_def, font=("Arial", 10))
         self.D1_def.set(6)
 
-        self.Accel2_label = tk.Label(root, text="Acceleration Motor 2: ",
+        self.Accel2_label = tk.Label(self.subframe1, text="Acceleration Motor 2: ",
                                      font=("Arial", 10))  # acceleration 2 labels and entry widgets
-        self.Accel2_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
+        self.Accel2_units = tk.Label(self.subframe1, text="Steps/s\u00b2", font=("Arial", 10))
         self.A2_def = IntVar()
-        self.Accel2_entry = tk.Entry(root, width=6, text=self.A2_def, font=("Arial", 10))
+        self.Accel2_entry = tk.Entry(self.subframe1, width=6, text=self.A2_def, font=("Arial", 10))
         self.A2_def.set(160)
 
-        self.Decel2_label = tk.Label(root, text="Deceleration Motor 2: ",
+        self.Decel2_label = tk.Label(self.subframe1, text="Deceleration Motor 2: ",
                                      font=("Arial", 10))  # deceleration 1 labels and entry widgets
-        self.Decel2_units = tk.Label(root, text="Steps/s\u00b2", font=("Arial", 10))
+        self.Decel2_units = tk.Label(self.subframe1, text="Steps/s\u00b2", font=("Arial", 10))
         self.D2_def = IntVar()
-        self.Decel2_entry = tk.Entry(root, width=6, text=self.D2_def, font=("Arial", 10))
+        self.Decel2_entry = tk.Entry(self.subframe1, width=6, text=self.D2_def, font=("Arial", 10))
         self.D2_def.set(160)
 
-        self.prht_label = tk.Label(root, text="Preheat time:", font=("Arial", 10))  # preheat labels and entry widgets
-        self.prht_units = tk.Label(root, text="s", font=("Arial", 10))
+        self.prht_label = tk.Label(self.subframe1, text="Preheat time:", font=("Arial", 10))  # preheat labels and entry widgets
+        self.prht_units = tk.Label(self.subframe1, text="s", font=("Arial", 10))
         self.prht_def = IntVar()
-        self.prht_entry = tk.Entry(root, width=6, text=self.prht_def, font=("Arial", 10))
+        self.prht_entry = tk.Entry(self.subframe1, width=6, text=self.prht_def, font=("Arial", 10))
         self.prht_def.set(0.5)
 
-        self.TimeD_label = tk.Label(root, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
-        self.TimeD_units = tk.Label(root, text="s", font=("Arial", 10))
+        self.TimeD_label = tk.Label(self.subframe1, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
+        self.TimeD_units = tk.Label(self.subframe1, text="s", font=("Arial", 10))
         self.TD_def = IntVar()
-        self.TimeD_entry = tk.Entry(root, width=6, text=self.TD_def, font=("Arial", 10))
+        self.TimeD_entry = tk.Entry(self.subframe1, width=6, text=self.TD_def, font=("Arial", 10))
         self.TD_def.set(1)
 
         self.Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
@@ -645,63 +669,67 @@ class SetupGUI:
         self.TimeD_entry.grid(row=11, column=1, pady=7)
 
     def dynamic_button_setup(self):
-        self.Automate_dimple_button = tk.Button(text="Automate Dimple", font=("Arial", 10),
-                                         command=self.automate_dimple_button_pressed)
-        self.Automate_taper_button = tk.Button(text="Automate Dimple", font=("Arial", 10),
-                                         command=self.automate_taper_button_pressed)
-        self.Automate_taper_button = tk.Button(text="Automate Taper", font=("Arial", 10),
-                                         command=self.automate_taper_button_pressed)
-        self.Run_button = tk.Button(text="Run", font=("Arial", 10), command=self.initiate_pulling_button_pressed)
-        self.Emg_button = tk.Button(text="EMERGENCY STOP", command=self.arduino_control.emergency_stop,
-                                     bg="red", fg="white",  activebackground="green")
-        self.elec_toggle_button = tk.Button(text="electrodes on/off", command=self.toggle_electrode_state_button_pressed
-                                            , font=("Arial", 10), activebackground = "cyan")
+        self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
+                                                command=self.automate_dimple_button_pressed, pady=10)
+        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
+                                               command=self.automate_taper_button_pressed, pady=10)
+        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Automate Taper", font=("Arial", 10),
+                                               command=self.automate_taper_button_pressed, pady=10)
 
-        self.Reset_button = tk.Button(text="Reset", command=self.motor_control.reset, font=("Arial", 10))
-        self.decel_button = tk.Button(text="Decelerate", command=self.motor_control.decelerate)
+        self.Emg_button = tk.Button(self.dynamic_button_frame, text="EMERGENCY STOP", command=self.arduino_control.emergency_stop,
+                                    bg="red", fg="white", activebackground="green", pady=20)
+        self.elec_toggle_button = tk.Button(self.dynamic_button_frame, text="electrodes on/off", command=self.toggle_electrode_state_button_pressed
+                                            , font=("Arial", 10), activebackground = "cyan", pady=20)
 
-        self.Center_button = tk.Button(text="Center", command=self.motor_control.center_taper,
-                                       font=("Arial", 10))
-        self.Dimple_button = tk.Button(text="Dimple", font=("Arial", 10),
-                                       command=self.dimple_button_pressed)
+        self.Reset_button = tk.Button(self.subframe2, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
+                                      ,padx=30, pady=5)
 
-        self.Calibrate_button = tk.Button(text="Calibrate Knife", font=("Arial", 10),
-                                          command=self.motor_control.calibrate_knife)
+        self.Center_button = tk.Button(self.subframe2, text="Center", command=self.motor_control.center_taper,
+                                       font=("Arial", 10), padx=30, pady=10)
+        self.Dimple_button = tk.Button(self.subframe2, text="Dimple", font=("Arial", 10),
+                                       command=self.dimple_button_pressed, padx=30, pady=10)
 
-        self.Calibrate_up_button = tk.Button(text="Move Knife Up", font=("Arial", 10),
-                                          command=self.motor_control.calibrate_up_knife)
-        self.Calibrate_down_button = tk.Button(text="Move Knife Down", font=("Arial", 10),
-                                             command=self.motor_control.calibrate_down_knife)
-        self.Tension_button = tk.Button(text="Tension Fiber", font=("Arial", 10),
-                                             command=self.tension_button_pressed)
+        self.Calibrate_button = tk.Button(self.dynamic_button_frame, text="Calibrate Knife", font=("Arial", 10),
+                                          command=self.motor_control.calibrate_knife, pady=10)
+
+        self.Calibrate_up_button = tk.Button(self.dynamic_button_frame, text="Move Knife Up", font=("Arial", 10),
+                                             command=self.motor_control.calibrate_up_knife, pady=10)
+        self.Calibrate_down_button = tk.Button(self.dynamic_button_frame, text="Move Knife Down", font=("Arial", 10),
+                                               command=self.motor_control.calibrate_down_knife, pady=10)
+        self.Tension_button = tk.Button(self.dynamic_button_frame, text="Tension Fiber", font=("Arial", 10),
+                                        command=self.tension_button_pressed, pady=10)
         # Button placement on GUI
-        self.Automate_dimple_button.grid(row=1, column=4)
-        self.Automate_taper_button.grid(row=2, column=4)
-        self.Center_button.grid(row=3, column=4)
-        self.Dimple_button.grid(row=4, column=4)
-        self.Reset_button.grid(row=5, column=4)
-        self.Tension_button.grid(row=6, column=4)
-        self.Calibrate_button.grid(row=7, column=4)
-        self.Calibrate_up_button.grid(row=8, column=4)
-        self.Calibrate_down_button.grid(row=9, column=4)
-        self.Run_button.grid(row=10, column=4)
-        self.decel_button.grid(row=11, column=4)
+        self.Automate_dimple_button.grid(row=1, column=0, pady=15, sticky="ew")
+        self.Automate_taper_button.grid(row=2, column=0, pady=15,  sticky="ew")
+        self.Tension_button.grid(row=6, column=0, pady=15, sticky="ew")
+        self.Calibrate_button.grid(row=7, column=0, pady=15,  sticky="ew")
+        self.Calibrate_up_button.grid(row=8, column=0, pady=15, sticky="ew")
+        self.Calibrate_down_button.grid(row=9, column=0, pady=15, sticky="ew")
+        self.elec_toggle_button.grid(row=10, column=0, pady=15,  sticky="ew")
+        self.Emg_button.grid(row=11, column=0, pady=15, sticky="ew")
 
-        self.elec_toggle_button.grid(row=9, column=3)
-        self.Emg_button.grid(row=8, column=3)
+        # Dimple Button placement in seperate subframe
+        self.Center_button.grid(row=10, column=3, sticky="ew")
+        self.Dimple_button.grid(row=9, column=3, sticky="ew")
+        self.Reset_button.grid(row=11, column=3, sticky="ew")
+
+        #self.decel_button = tk.Button(self.subframe2, text="Decelerate", command=self.motor_control.decelerate)
+        #self.Run_button = tk.Button(self.subframe2, text="Run", font=("Arial", 10), command=self.initiate_pulling_button_pressed)
+        #self.Run_button.grid(row=10, column=4)
+        #self.decel_button.grid(row=11, column=4)
 
     def dimpling_setup(self):
         # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         # prepare the widgets of the GUI for dimpling
-        self.text2 = tk.Label(root, text="Dimpling:", font=(15))
+        self.text2 = tk.Label(self.subframe2, text="Dimpling:", font=(15))
         self.text2.grid(row=8, column=0, pady=7)
 
 
-        self.Speed3_label = tk.Label(root, text="Speed Motor 3: ",
+        self.Speed3_label = tk.Label(self.subframe2, text="Speed Motor 3: ",
                                      font=("Arial", 10))  # Speed 3 labels and entry widgets
         self.s3_def = IntVar()
-        self.Speed3_units = tk.Label(root, text="Steps/s", font=("Arial", 10))
-        self.Speed3_entry = tk.Entry(root, width=6, text=self.s3_def, font=("Arial", 10))
+        self.Speed3_units = tk.Label(self.subframe2, text="Steps/s", font=("Arial", 10))
+        self.Speed3_entry = tk.Entry(self.subframe2, width=6, text=self.s3_def, font=("Arial", 10))
         self.s3_def.set(1000)
 
         self.Speed3_label.grid(row=9, column=0, pady=7)  # Speed 3 widget placements
@@ -710,9 +738,9 @@ class SetupGUI:
 
         self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
         self.Depth_selection.set(20)
-        self.Depth_label = tk.Label(root, text="Dimple depth: ", font=("Arial", 10))
-        self.Depth_entry = tk.Entry(root, width=6, text=self.Depth_selection, font=("Arial", 10))
-        self.Depth_units = tk.Label(root, text="Steps", font=("Arial", 10))
+        self.Depth_label = tk.Label(self.subframe2, text="Dimple depth: ", font=("Arial", 10))
+        self.Depth_entry = tk.Entry(self.subframe2, width=6, text=self.Depth_selection, font=("Arial", 10))
+        self.Depth_units = tk.Label(self.subframe2, text="Steps", font=("Arial", 10))
 
 
 
@@ -740,14 +768,14 @@ class SetupGUI:
         self.microscope_connection = "Microscope Not Connected"
 
         # Create and place labels for connection status directly in the main frame
-        arduino_status_label = Label(self.root, text=self.arduino_connection, bg=arduino_bg)
-        arduino_status_label.grid(row=0, column=0)
+        arduino_status_label = Label(self.connection_status_frame, text=self.arduino_connection, bg=arduino_bg)
+        arduino_status_label.grid(row=0, column=0, padx=100)
 
-        power_meter_status_label = Label(self.root, text=self.power_meter_connection, bg=power_meter_bg)
-        power_meter_status_label.grid(row=0, column=1, columnspan=2)
+        power_meter_status_label = Label(self.connection_status_frame, text=self.power_meter_connection, bg=power_meter_bg)
+        power_meter_status_label.grid(row=0, column=1, columnspan=2, padx=100)
 
-        microscope_status_label = Label(self.root, text=self.microscope_connection, bg="red")
-        microscope_status_label.grid(row=0, column=3, columnspan=2)
+        microscope_status_label = Label(self.connection_status_frame, text=self.microscope_connection, bg="red")
+        microscope_status_label.grid(row=0, column=3, columnspan=2, padx=100)
 
     def update_electrode_status(self):
         state = self.arduino_control.electrode_state
