@@ -813,9 +813,9 @@ class SetupGUI:
         Res2_selection = self.Res2_selection.get()
         prht_entry = self.prht_entry.get()
 
-        dimple_speed = self.s3_def.get()
+        dimple_speed = self.Speed3_entry.get()
         dimple_depth = self.Depth_selection.get()
-        dimple_time_delay = self.TD_def.get()
+        dimple_time_delay = self.TimeD_entry.get()
 
         # Check if Arduino is connected before performing dimple
         if self.arduino_control.get_connection_status() == "Not Connected":
