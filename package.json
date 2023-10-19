@@ -1,6 +1,30 @@
 {
-  "name": "FiberPulling",
-  "version": "1.0.0",
-  "dependencies": {
-  }
+    "profiles": [
+        {
+            "profile_name": "Kayla Profile",
+            "motor_speeds": [38, 930, 1000],
+            "motor_accelerations": [6, 160, 0],
+            "motor_decelerations": [6, 160, 0],
+            "max_speed_time": 2,
+            "preheat_time": 0.8,
+            "dimple_depth": 20,
+            "dimple_delay_time": 1,
+            "motor_resolution": ["high", "mid", "low"],
+            "knife_calibration_height": 87900,
+            "tension_ratio": [1.0, 1.2, 1.5]
+        },
+        {
+            "profile_name": "Profile 2",
+            "motor_speeds": [0, 0, 0],
+            "motor_accelerations": [0, 0, 0],
+            "motor_decelerations": [0, 0, 0],
+            "max_speed_time": 2,
+            "preheat_time": 0,
+            "dimple_depth": 0,
+            "dimple_delay_time": 0,
+            "motor_resolution": ["high", "mid", "low"],
+            "knife_calibration_height": 87900,
+            "tension_ratio": [0, 0, 0]
+        }
+    ]
 }
