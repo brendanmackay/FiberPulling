@@ -715,7 +715,12 @@ class SetupGUI:
             power_meter_bg = "red"
             self.power_meter_connection = "Power Meter Not Connected"
 
-        self.microscope_connection = "Microscope Not Connected"
+        if self.camera_control.camera_connected:
+            microscope_bg= "green"
+            self.microscope_connection = "Microscope Connected"
+        else:
+            microscope_bg ="red"
+            self.microscope_connection = "Microscope Not Connected"
 
         # Create and place labels for connection status directly in the main frame
         arduino_status_label = Label(self.connection_status_frame, text=self.arduino_connection, bg=arduino_bg)
@@ -724,7 +729,7 @@ class SetupGUI:
         power_meter_status_label = Label(self.connection_status_frame, text=self.power_meter_connection, bg=power_meter_bg)
         power_meter_status_label.grid(row=0, column=1, columnspan=2, padx=100)
 
-        microscope_status_label = Label(self.connection_status_frame, text=self.microscope_connection, bg="red")
+        microscope_status_label = Label(self.connection_status_frame, text=self.microscope_connection, bg=microscope_bg)
         microscope_status_label.grid(row=0, column=3, columnspan=2, padx=100)
 
     def power_meter_plot_setup(self):
@@ -915,9 +920,9 @@ class SetupGUI:
             # Handle the exception gracefully, e.g., print an error message
             print(f"An error occurred during closing: {str(e)}")
 
-    def update_fiber_loss(self):
+    def update_fiber_loss(self, power_input):
         # Input power (initial power level)
-        P_in = self.power_meter.power_data.max()
+        P_in = self.power_meter.power_data[1]
 
         # Output power (final power level)
         P_out = self.power_meter.read_power() # Replace with your actual output power value
