@@ -301,6 +301,7 @@ class MotorControl:
     def automate_dimple(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
                      enab_selection, Res1_selection, Res2_selection, prht_entry, dimple_speed, dimple_depth,
                      dimple_time_delay):
+
         self.power_meter.clear_power_meter_data()
 
         # First, initiate the tapering process
@@ -498,7 +499,7 @@ class SetupGUI:
         live_info_label = tk.Label(self.live_info_frame, text="Live Data:", font=(15))
         live_info_label.grid(row=0, column=0, pady=7)
 
-        self.fiber_loss_label = tk.Label(self.live_info_frame, text="Fiber Loss: 0.0 Decibels")
+        self.fiber_loss_label = tk.Label(self.live_info_frame, text="Fiber Transmission: 0.0 Percent")
         self.fiber_loss_label.grid(row=1, column=0, pady=7)
 
     def tapering_setup(self):
@@ -735,7 +736,7 @@ class SetupGUI:
     def power_meter_plot_setup(self):
         if self.power_meter.get_connection_status():
             # Setup Matplotlib Plot
-            self.fig, self.ax = plt.subplots(figsize=(6, 4))
+            self.fig, self.ax = plt.subplots(figsize=(5, 3))
             self.canvas = FigureCanvasTkAgg(self.fig, master=self.power_meter_frame)
             self.canvas.get_tk_widget().grid(row=0, column=0)
 
@@ -768,10 +769,9 @@ class SetupGUI:
         self.update_electrode_status()
 
     def dimple_button_pressed(self):
-        speed = self.s3_def.get()
+        speed = self.Speed3_entry.get()
         depth = self.Depth_selection.get()
-        time_delay = self.TD_def.get()
-
+        time_delay = self.TimeD_entry.get()
         # Check if Arduino is connected before performing dimple
         if self.arduino_control.get_connection_status() == "Not Connected":
             print("Error", "Arduino is not connected.")
@@ -806,6 +806,7 @@ class SetupGUI:
     def automate_dimple_button_pressed(self):
         # begin updating the power meter
         self.update_power_meter_plot_periodically()
+        self.update_fiber_loss_periodically()
 
         """This function performs the entire tapering and dimpling process with the parameters found below."""
         Speed1_entry = self.Speed1_entry.get()
@@ -920,16 +921,17 @@ class SetupGUI:
             # Handle the exception gracefully, e.g., print an error message
             print(f"An error occurred during closing: {str(e)}")
 
-    def update_fiber_loss(self, power_input):
+    def update_fiber_loss(self):
         # Input power (initial power level)
-        P_in = self.power_meter.power_data[1]
+        power_in = self.power_meter.power_data[1]
 
         # Output power (final power level)
-        P_out = self.power_meter.read_power() # Replace with your actual output power value
+        power_out = self.power_meter.read_power() # Replace with your actual output power value
 
         # Calculate loss in decibels
-        loss_dB = 10 * math.log10(P_in / P_out)
-        self.fiber_loss_label.config(text=f"Fiber Loss: {loss_dB:.2f} Decibels")
+        transmission_percent = 100*(power_out/power_in)
+        #loss_percent = 10 * math.log10(P_in / P_out)
+        self.fiber_loss_label.config(text=f"Fiber Transmission: {transmission_percent:.2f} Percent")
 
     def update_fiber_loss_periodically(self):
         # Update the label with the latest value
