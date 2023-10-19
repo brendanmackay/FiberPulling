@@ -302,10 +302,11 @@ class MotorControl:
                      enab_selection, Res1_selection, Res2_selection, prht_entry, dimple_speed, dimple_depth,
                      dimple_time_delay):
         self.power_meter.clear_power_meter_data()
+
         # First, initiate the tapering process
         self.initiate_pulling(Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
                               enab_selection, Res1_selection, Res2_selection, prht_entry)
-        # Wait for 6 seconds
+        # Wait for 8 seconds
         time.sleep(8)
         self.decelerate()
 
@@ -856,6 +857,27 @@ class SetupGUI:
                                                                             Res2_selection, prht_entry))
         thread.start()
 
+    def show_camera_feed(self):
+        if self.camera_control.camera_connected:
+            """Display the camera feed within the GUI."""
+            frame = self.camera_control.get_frame()
+
+            img = Image.fromarray(frame).resize((500, 300))
+            imgtk = ImageTk.PhotoImage(image=img)
+
+            if not hasattr(self, "camera_label"):
+                # Create a label for the camera feed if it doesn't exist
+                self.camera_label = tk.Label(self.camera_frame, image=imgtk)
+                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
+                self.camera_label.grid(row=0, column=0, sticky="nsew")
+            else:
+                # Update the existing label with the new image
+                self.camera_label.configure(image=imgtk)
+                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
+
+        # Schedule the next frame update
+        self.root.after(10, self.show_camera_feed)
+
     def update_power_meter_plot_periodically(self):
         if self.power_meter.get_connection_status():
             # Call the function to update the power meter plot
@@ -884,31 +906,9 @@ class SetupGUI:
                 # Redraw the canvas
                 self.canvas.draw()
 
-    def show_camera_feed(self):
-        if self.camera_control.camera_connected:
-            """Display the camera feed within the GUI."""
-            frame = self.camera_control.get_frame()
-
-            img = Image.fromarray(frame).resize((500, 300))
-            imgtk = ImageTk.PhotoImage(image=img)
-
-            if not hasattr(self, "camera_label"):
-                # Create a label for the camera feed if it doesn't exist
-                self.camera_label = tk.Label(self.camera_frame, image=imgtk)
-                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
-                self.camera_label.grid(row=0, column=0, sticky="nsew")
-            else:
-                # Update the existing label with the new image
-                self.camera_label.configure(image=imgtk)
-                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
-
-        # Schedule the next frame update
-        self.root.after(10, self.show_camera_feed)
-
     def on_closing(self):
         try:
             #self.motor_control.move_to_home_position()
-            #self.arduino_control.send_command('EXIT\n')
             self.root.destroy()
             print("Good work")
         except Exception as e:
