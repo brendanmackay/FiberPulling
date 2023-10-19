@@ -13,6 +13,7 @@ import serial.tools.list_ports
 import time
 import threading #threading
 import cv2 #for video
+import math
 from PIL import Image, ImageTk
 import matplotlib #for graph
 from matplotlib.figure import Figure
@@ -28,79 +29,24 @@ matplotlib.use('Agg')
 class CameraControl:
     def __init__(self):
         # Initialize camera here, if applicable
-        print("HI")
+        self.init_camera()
 
     def init_camera(self):
         """Initialize the camera and set the global flag for camera connection."""
-        global camera_connected
-        global cap
+        self.camera_connected = False
+        self.cap = cv2.VideoCapture(1)  # attempt to capture video from the digital microscope
 
-        camera_connected = False
-        cap = cv2.VideoCapture(1)  # attempt to capture video from the digital microscope
-
-        if cap.isOpened():  # check if we successfully opened the camera
-            camera_connected = True
+        if self.cap.isOpened():  # check if we successfully opened the camera
+            self.camera_connected = True
         else:
             print("No camera found or unable to connect to camera!")
 
-    def create_blank_image(self, width, height):
-        """Create a blank white image of given dimensions."""
-        blank_img = np.ones((height, width, 4), dtype=np.uint8) * 255  # 4 channels: RGBA
-        return blank_img
-
-    def show_feed(self):
-        """Capture and display a frame from the camera (if connected),
-        or display a white image if no camera is connected."""
-        if camera_connected:
-            _, frame = cap.read()
+    def get_frame(self):
+        """Capture and return a frame from the camera (if connected) or a white image if no camera is connected."""
+        if self.camera_connected:
+            _, frame = self.cap.read()
             frame = cv2.flip(frame, 0)
-            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        else:
-            cv2image = self.create_blank_image(500, 300)
-
-        img = Image.fromarray(cv2image).resize((500, 300))
-        imgtk = ImageTk.PhotoImage(image=img)
-        video_frame = tk.Frame(root, width=10, height=10)  # frame for the digital microscope
-        video_label = tk.Label(video_frame)  # label for the microscope
-        video_label.imgtk = imgtk  # Shows frame for display 1
-        video_label.configure(image=imgtk)
-        root.after(10, self.show_feed)
-
-    def save_power_meter_data(self):
-        # Assuming x_vals and y_vals are defined elsewhere to create mw_time
-        mw_time = np.array([self.x_vals, self.y_vals])
-
-        # Check if mw_time is not empty
-        if mw_time.size > 0:
-            # Get the current date and time
-            current_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-            # Construct the file name with the current date and time
-            file_name = f"mW_f(t)_powermeter_electrode_1_{current_datetime}.npy"
-
-            # Specify the directory path
-            directory_path = r'C:\Users\brend\OneDrive - University of Calgary\Phys598\Fiber Data\Numpy Data'
-
-            # Combine the directory path and file name to create the full file path
-            file_path = directory_path + "\\" + file_name
-
-            np.save(file_path, mw_time)
-            print('Data saved.')
-        else:
-            print('mw_time is empty. Data not saved.')
-
-    def Clear(self):  # clears the plot
-        plt.cla()
-        self.x_vals.clear()
-        self.y_vals.clear()
-
-    def capture_frame(self):
-        # Capture a frame from the camera
-        print("hi")
-
-    def display_frame(self):
-        # Display the captured frame on the GUI
-        print("hi")
+            return cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
 
 class PowerMeterControl:
 
@@ -131,7 +77,6 @@ class PowerMeterControl:
     def read_power(self):
         if self.power_meter and self.connection_status:
             return self.power_meter.read
-            #return float(self.power_meter.read())
         else:
             return None
 
@@ -186,21 +131,6 @@ class ArduinoControl:
         self.send_command('EMG_STP\n')
         self.send_command('RLY_OF\n')
         print("Emergency Stop Activated")
-
-    def refresh_ports(self):
-        # Get a list of all available COM ports using pyserial's list_ports method.
-        ports = [port.device for port in serial.tools.list_ports.comports()]
-        return ports
-
-    def connect_arduino(self, selected_port):
-        if selected_port != 'Select port':
-            try:
-                self.arduino = serial.Serial(selected_port, 9600)
-                self.connection_status = f"Connected to {selected_port}"
-            except Exception as e:
-                self.connection_status = "Select a valid port"
-        else:
-            self.connection_status = "Select a valid port"
 
     def auto_connect(self):
         # Iterate through all available ports and try connecting
@@ -486,7 +416,7 @@ class MotorControl:
             time.sleep(0.5)  # Wait for a short period before checking again
 
 class SetupGUI:
-    def __init__(self, root, motor_control, arduino_control, power_meter):
+    def __init__(self, root, motor_control, arduino_control, power_meter, camera_control):
         self.root = root
         self.root.title("Fiber Pulling App")
 
@@ -494,17 +424,19 @@ class SetupGUI:
         self.motor_control = motor_control
         self.arduino_control = arduino_control
         self.power_meter = power_meter
+        self.camera_control = camera_control
 
         # Setup the frames in the GUI
         self.setup_frames()
 
         # Set up the protocol for handling window closure
-        # self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Create and place buttons on GUI
         self.setup_gui()
 
-
+        # Show camera feed
+        self.show_camera_feed()
     def setup_gui(self):
         root.title('Fiber Pulling')
         self.tapering_setup()
@@ -513,152 +445,210 @@ class SetupGUI:
         self.update_electrode_status()
         self.power_meter_plot_setup()
         self.connection_status_setup()
+        self.live_info_setup()
 
     def setup_frames(self):
         # Create and configure the main frame
         main_frame = tk.Frame(self.root)
         main_frame.grid(row=0, column=0, sticky="nsew")
-        # Create three vertical subframes
-        self.connection_status_frame = tk.Frame(main_frame)
+
+        # Create Frame for Connection Status and other important info
+        self.connection_status_frame = tk.Frame(main_frame, bg= "red")
         self.connection_status_frame.grid(row=0, column=0, columnspan=3, sticky="nsew")
 
-        self.tapering_frame = tk.Frame(main_frame)
-        self.tapering_frame.grid(row=1, column=0, sticky="ew", padx=10)
+        # Create three vertical sub frames
+        column_frame_1 = tk.Frame(main_frame)
+        column_frame_1.grid(row=1, column=0, sticky="nsew")
 
-        self.subframe2 = tk.Frame(main_frame)
-        self.subframe2.grid(row=2, column=0, sticky="nsew", padx=10)
+        column_frame_2 = tk.Frame(main_frame)
+        column_frame_2.grid(row=1, column=1, sticky="nsew")
 
-        self.dimpling_frame = tk.Frame(self.subframe2)
-        self.dimpling_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+        column_frame_3 = tk.Frame(main_frame)
+        column_frame_3.grid(row=1, column=2, sticky="nsew")
 
-        self.live_info_frame = tk.Frame(self.subframe2)
-        self.live_info_frame.grid(row=3, column=0, sticky="nsew", padx=10)
 
-        self.subframe1 = tk.Frame(main_frame)
-        self.subframe1.grid(row=3, column=0, sticky="nsew", padx=10)
+        # Create subframes in the first column frame
+        self.tapering_frame = tk.Frame(column_frame_1)
+        self.tapering_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.dynamic_button_frame = tk.Frame(main_frame)
-        self.dynamic_button_frame.grid(row=1, column=1, rowspan=2, sticky="nsew", padx=10)
+        self.dimpling_frame = tk.Frame(column_frame_1)
+        self.dimpling_frame.grid(row=1, column=0, sticky="nsew")
 
-        self.power_meter_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
-        self.power_meter_frame.grid(row=1, column=2, sticky="nsew", pady=10, padx=10)
+        self.live_info_frame = tk.Frame(column_frame_1)
+        self.live_info_frame.grid(row=2, column=0, sticky="nsew")
 
-        self.camera_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
-        self.camera_frame.grid(row=2, column=2, sticky="nsew", pady=10, padx=10)
+        self.dynamic_button_frame = tk.Frame(column_frame_2)
+        self.dynamic_button_frame.grid(row=0, column=0, sticky="nsew")
+
+        self.power_meter_frame = tk.Frame(column_frame_3, width=400, height=300, bg="grey80")
+        self.power_meter_frame.grid(row=0, column=0, sticky="nsew")
+
+        self.camera_frame = tk.Frame(column_frame_3, width=400, height=300, bg="grey90")
+        self.camera_frame.grid(row=1, column=0, sticky="nsew")
 
         # Configure column and row weights to make subframes expand with window resizing
         main_frame.columnconfigure((0, 1), weight=1)
         main_frame.rowconfigure((0, 1), weight=1)
 
+    def live_info_setup(self):
+        # Prepare GUI for Tapering
+        live_info_label = tk.Label(self.live_info_frame, text="Live Data:", font=(15))
+        live_info_label.grid(row=0, column=0, pady=7)
+
+        self.fiber_loss_label = tk.Label(self.live_info_frame, text="Fiber Loss: 0.0 Decibels")
+        self.fiber_loss_label.grid(row=1, column=0, pady=7)
+
     def tapering_setup(self):
         # Prepare GUI for Tapering
+        tapering_label = tk.Label(self.tapering_frame, text="Tapering:", font=(15))
+
         Res_options = ["High Resolution", "Mid Resolution", "Low Resolution"]
         self.Res1_selection = tk.StringVar()  # resoution 1 labels and option menu
         self.Res1_selection.set(Res_options[0])
-        self.Res1_label = tk.Label(self.tapering_frame, text="Resolution Motor 1: ", font=("Arial", 10))
+        Res1_label = tk.Label(self.tapering_frame, text="Resolution Motor 1: ", font=("Arial", 10))
         self.Res1_entry = tk.OptionMenu(self.tapering_frame, self.Res1_selection, *Res_options)
         self.Res1_entry['menu'].configure(font=('Arial', 10))
 
         self.Res2_selection = tk.StringVar()  # resolution 2 labels and option menu
         self.Res2_selection.set(Res_options[1])
-        self.Res2_label = tk.Label(self.tapering_frame, text="Resolution Motor 2: ", font=("Arial", 10))
+        Res2_label = tk.Label(self.tapering_frame, text="Resolution Motor 2: ", font=("Arial", 10))
         self.Res2_entry = tk.OptionMenu(self.tapering_frame, self.Res2_selection, *Res_options)
         self.Res2_entry['menu'].configure(font=('Arial', 10))
 
-        self.enab_options = ["Yes", "No"]  # enable options
+        enab_options = ["Yes", "No"]  # enable options
 
         self.enab_selection = tk.StringVar()  # enable label and option menu
-        self.enab_selection.set(self.enab_options[0])
-        self.enab_label = tk.Label(self.tapering_frame, text="Enable Motors?: ", font=("Arial", 10))
-        self.enab_entry = tk.OptionMenu(self.tapering_frame, self.enab_selection, *self.enab_options)
+        self.enab_selection.set(enab_options[0])
+        enab_label = tk.Label(self.tapering_frame, text="Enable Motors?: ", font=("Arial", 10))
+        self.enab_entry = tk.OptionMenu(self.tapering_frame, self.enab_selection, *enab_options)
 
-        self.Speed1_label = tk.Label(self.tapering_frame, text="Speed Motor 1: ",
+        Speed1_label = tk.Label(self.tapering_frame, text="Speed Motor 1: ",
                                      font=("Arial", 10))  # Speed 1 labels and entry widgets
-        self.s1_def = IntVar()
-        self.Speed1_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
-        self.Speed1_entry = tk.Entry(self.tapering_frame, width=6, text=self.s1_def, font=("Arial", 10))
-        self.s1_def.set(38)
+        s1_def = IntVar()
+        Speed1_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
+        self.Speed1_entry = tk.Entry(self.tapering_frame, width=6, text=s1_def, font=("Arial", 10))
+        s1_def.set(38)
 
-        self.Speed2_label = tk.Label(self.tapering_frame, text="Speed Motor 2: ",
+        Speed2_label = tk.Label(self.tapering_frame, text="Speed Motor 2: ",
                                      font=("Arial", 10))  # Speed 2 Labels and entry widgets
-        self.s2_def = IntVar()
-        self.Speed2_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
-        self.Speed2_entry = tk.Entry(self.tapering_frame, width=6, text=self.s2_def, font=("Arial", 10))
-        self.s2_def.set(930)
+        s2_def = IntVar()
+        Speed2_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
+        self.Speed2_entry = tk.Entry(self.tapering_frame, width=6, text=s2_def, font=("Arial", 10))
+        s2_def.set(930)
 
-        self.Accel1_label = tk.Label(self.tapering_frame, text="Acceleration Motor 1: ",
+        Accel1_label = tk.Label(self.tapering_frame, text="Acceleration Motor 1: ",
                                      font=("Arial", 10))  # acceleration 1 labels and entry widgets
-        self.Accel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.A1_def = IntVar()
-        self.Accel1_entry = tk.Entry(self.tapering_frame, width=6, text=self.A1_def, font=("Arial", 10))
-        self.A1_def.set(6)
+        Accel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
+        A1_def = IntVar()
+        self.Accel1_entry = tk.Entry(self.tapering_frame, width=6, text=A1_def, font=("Arial", 10))
+        A1_def.set(6)
 
-        self.Decel1_label = tk.Label(self.tapering_frame, text="Deceleration Motor 1: ",
+        Decel1_label = tk.Label(self.tapering_frame, text="Deceleration Motor 1: ",
                                      font=("Arial", 10))  # deceleration 1 labels and entry widgets
-        self.Decel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.D1_def = IntVar()
-        self.Decel1_entry = tk.Entry(self.tapering_frame, width=6, text=self.D1_def, font=("Arial", 10))
-        self.D1_def.set(6)
+        Decel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
+        D1_def = IntVar()
+        self.Decel1_entry = tk.Entry(self.tapering_frame, width=6, text=D1_def, font=("Arial", 10))
+        D1_def.set(6)
 
-        self.Accel2_label = tk.Label(self.tapering_frame, text="Acceleration Motor 2: ",
+        Accel2_label = tk.Label(self.tapering_frame, text="Acceleration Motor 2: ",
                                      font=("Arial", 10))  # acceleration 2 labels and entry widgets
-        self.Accel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.A2_def = IntVar()
-        self.Accel2_entry = tk.Entry(self.tapering_frame, width=6, text=self.A2_def, font=("Arial", 10))
-        self.A2_def.set(160)
+        Accel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
+        A2_def = IntVar()
+        self.Accel2_entry = tk.Entry(self.tapering_frame, width=6, text=A2_def, font=("Arial", 10))
+        A2_def.set(160)
 
-        self.Decel2_label = tk.Label(self.tapering_frame, text="Deceleration Motor 2: ",
+        Decel2_label = tk.Label(self.tapering_frame, text="Deceleration Motor 2: ",
                                      font=("Arial", 10))  # deceleration 1 labels and entry widgets
-        self.Decel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.D2_def = IntVar()
-        self.Decel2_entry = tk.Entry(self.tapering_frame, width=6, text=self.D2_def, font=("Arial", 10))
-        self.D2_def.set(160)
+        Decel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
+        D2_def = IntVar()
+        self.Decel2_entry = tk.Entry(self.tapering_frame, width=6, text=D2_def, font=("Arial", 10))
+        D2_def.set(160)
 
-        self.prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))  # preheat labels and entry widgets
-        self.prht_units = tk.Label(self.tapering_frame, text="s", font=("Arial", 10))
-        self.prht_def = IntVar()
-        self.prht_entry = tk.Entry(self.tapering_frame, width=6, text=self.prht_def, font=("Arial", 10))
-        self.prht_def.set(0.5)
+        prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))  # preheat labels and entry widgets
+        prht_units = tk.Label(self.tapering_frame, text="s", font=("Arial", 10))
+        prht_def = IntVar()
+        self.prht_entry = tk.Entry(self.tapering_frame, width=6, text=prht_def, font=("Arial", 10))
+        prht_def.set(0.5)
 
+        tapering_label.grid(row=0, column=0, padx=5, pady=7)
 
-
-        self.Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
+        Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
         self.Res1_entry.grid(row=2, column=3, padx=5, pady=7)
 
-        self.Res2_label.grid(row=3, column=3, padx=5, pady=7)  # resolution 2 widget placements
+        Res2_label.grid(row=3, column=3, padx=5, pady=7)  # resolution 2 widget placements
         self.Res2_entry.grid(row=4, column=3, padx=5, pady=7)
 
-        self.enab_label.grid(row=5, column=3, padx=5, pady=7)  # enable 1 widget placements
+        enab_label.grid(row=5, column=3, padx=5, pady=7)  # enable 1 widget placements
         self.enab_entry.grid(row=6, column=3, padx=5, pady=7)
 
 
-        self.Speed1_label.grid(row=1, column=0, pady=7)  # Speed 1 widget placements
-        self.Speed1_units.grid(row=1, column=2, pady=7)
+        Speed1_label.grid(row=1, column=0, pady=7)  # Speed 1 widget placements
+        Speed1_units.grid(row=1, column=2, pady=7)
         self.Speed1_entry.grid(row=1, column=1, pady=7)
 
-        self.Speed2_label.grid(row=2, column=0, pady=7)  # Speed 2 widget placements
-        self.Speed2_units.grid(row=2, column=2, pady=7)
+        Speed2_label.grid(row=2, column=0, pady=7)  # Speed 2 widget placements
+        Speed2_units.grid(row=2, column=2, pady=7)
         self.Speed2_entry.grid(row=2, column=1, pady=7)
 
-        self.Accel1_label.grid(row=3, column=0, pady=7)  # acceleration 1 widget placements
-        self.Accel1_units.grid(row=3, column=2)
+        Accel1_label.grid(row=3, column=0, pady=7)  # acceleration 1 widget placements
+        Accel1_units.grid(row=3, column=2)
         self.Accel1_entry.grid(row=3, column=1, pady=7)
 
-        self.Accel2_label.grid(row=4, column=0, pady=7)  # Acceleration 2 widget placements
-        self.Accel2_units.grid(row=4, column=2)
+        Accel2_label.grid(row=4, column=0, pady=7)  # Acceleration 2 widget placements
+        Accel2_units.grid(row=4, column=2)
         self.Accel2_entry.grid(row=4, column=1, pady=7)
 
-        self.Decel1_label.grid(row=5, column=0, pady=7)  # Deceleration 1 widget placements
-        self.Decel1_units.grid(row=5, column=2)
+        Decel1_label.grid(row=5, column=0, pady=7)  # Deceleration 1 widget placements
+        Decel1_units.grid(row=5, column=2)
         self.Decel1_entry.grid(row=5, column=1, pady=7)
 
-        self.Decel2_label.grid(row=6, column=0, pady=7)  # Acceleration 2 widget placements
-        self.Decel2_units.grid(row=6, column=2)
+        Decel2_label.grid(row=6, column=0, pady=7)  # Acceleration 2 widget placements
+        Decel2_units.grid(row=6, column=2)
         self.Decel2_entry.grid(row=6, column=1, pady=7)
 
-        self.prht_label.grid(row=7, column=0, pady=7)  # preheat widgets placements
+        prht_label.grid(row=7, column=0, pady=7)  # preheat widgets placements
         self.prht_entry.grid(row=7, column=1, pady=7)
-        self.prht_units.grid(row=7, column=2, pady=7)
+        prht_units.grid(row=7, column=2, pady=7)
+
+    def dimpling_setup(self):
+        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        # prepare the widgets of the GUI for dimpling
+        dimpling_label = tk.Label(self.dimpling_frame, text="Dimpling:", font=(15))
+        dimpling_label.grid(row=0, column=0, pady=7)
+
+
+        Speed3_label = tk.Label(self.dimpling_frame, text="Speed Motor 3: ",
+                                     font=("Arial", 10))  # Speed 3 labels and entry widgets
+        s3_def = IntVar()
+        Speed3_units = tk.Label(self.dimpling_frame, text="Steps/s", font=("Arial", 10))
+        self.Speed3_entry = tk.Entry(self.dimpling_frame, width=6, text=s3_def, font=("Arial", 10))
+        s3_def.set(1000)
+
+        Speed3_label.grid(row=1, column=0, pady=7)  # Speed 3 widget placements
+        Speed3_units.grid(row=1, column=2, pady=7)
+        self.Speed3_entry.grid(row=1, column=1, pady=7)
+
+        self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
+        self.Depth_selection.set(20)
+        Depth_label = tk.Label(self.dimpling_frame, text="Dimple depth: ", font=("Arial", 10))
+        self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, text=self.Depth_selection, font=("Arial", 10))
+        Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
+
+        TimeD_label = tk.Label(self.dimpling_frame, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
+        TimeD_units = tk.Label(self.dimpling_frame, text="s", font=("Arial", 10))
+        TD_def = IntVar()
+        self.TimeD_entry = tk.Entry(self.dimpling_frame, width=6, text=TD_def, font=("Arial", 10))
+        TD_def.set(1)
+
+
+        Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
+        self.Depth_entry.grid(row=2, column=1, padx=5, pady=7)
+        Depth_units.grid(row=2, column=2, padx=5, pady=7)
+
+
+        TimeD_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
+        TimeD_units.grid(row=3, column=2)
+        self.TimeD_entry.grid(row=3, column=1, pady=7)
 
     def dynamic_button_setup(self):
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
@@ -691,64 +681,20 @@ class SetupGUI:
         self.Tension_button = tk.Button(self.dynamic_button_frame, text="Tension Fiber", font=("Arial", 10),
                                         command=self.tension_button_pressed, pady=10)
         # Button placement on GUI
-        self.Automate_dimple_button.grid(row=1, column=0, pady=15, sticky="ew")
-        self.Automate_taper_button.grid(row=2, column=0, pady=15,  sticky="ew")
-        self.Tension_button.grid(row=6, column=0, pady=15, sticky="ew")
-        self.Calibrate_button.grid(row=7, column=0, pady=15,  sticky="ew")
-        self.Calibrate_up_button.grid(row=8, column=0, pady=15, sticky="ew")
-        self.Calibrate_down_button.grid(row=9, column=0, pady=15, sticky="ew")
-        self.elec_toggle_button.grid(row=10, column=0, pady=15,  sticky="ew")
-        self.Emg_button.grid(row=11, column=0, pady=15, sticky="ew")
+        self.Automate_dimple_button.grid(row=1, column=0, pady=5, sticky="nsew")
+        self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
+        self.Tension_button.grid(row=6, column=0, pady=5, sticky="nsew")
+        self.Calibrate_button.grid(row=7, column=0, pady=5,  sticky="nsew")
+        self.Calibrate_up_button.grid(row=8, column=0, pady=5, sticky="nsew")
+        self.Calibrate_down_button.grid(row=9, column=0, pady=5, sticky="nsew")
+        self.elec_toggle_button.grid(row=10, column=0, pady=5,  sticky="nsew")
+        self.Emg_button.grid(row=11, column=0, pady=5, sticky="nsew")
 
         # Dimple Button placement in seperate subframe
-        self.Center_button.grid(row=2, column=3, sticky="ew")
-        self.Dimple_button.grid(row=1, column=3, sticky="ew")
-        self.Reset_button.grid(row=3, column=3, sticky="ew")
+        self.Center_button.grid(row=2, column=3, sticky="nsew")
+        self.Dimple_button.grid(row=1, column=3, sticky="nsew")
+        self.Reset_button.grid(row=3, column=3, sticky="nsew")
 
-        #self.decel_button = tk.Button(self.subframe2, text="Decelerate", command=self.motor_control.decelerate)
-        #self.Run_button = tk.Button(self.subframe2, text="Run", font=("Arial", 10), command=self.initiate_pulling_button_pressed)
-        #self.Run_button.grid(row=10, column=4)
-        #self.decel_button.grid(row=11, column=4)
-
-    def dimpling_setup(self):
-        # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        # prepare the widgets of the GUI for dimpling
-        self.text2 = tk.Label(self.dimpling_frame, text="Dimpling:", font=(15))
-        self.text2.grid(row=0, column=0, pady=7)
-
-
-        self.Speed3_label = tk.Label(self.dimpling_frame, text="Speed Motor 3: ",
-                                     font=("Arial", 10))  # Speed 3 labels and entry widgets
-        self.s3_def = IntVar()
-        self.Speed3_units = tk.Label(self.dimpling_frame, text="Steps/s", font=("Arial", 10))
-        self.Speed3_entry = tk.Entry(self.dimpling_frame, width=6, text=self.s3_def, font=("Arial", 10))
-        self.s3_def.set(1000)
-
-        self.Speed3_label.grid(row=1, column=0, pady=7)  # Speed 3 widget placements
-        self.Speed3_units.grid(row=1, column=2, pady=7)
-        self.Speed3_entry.grid(row=1, column=1, pady=7)
-
-        self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
-        self.Depth_selection.set(20)
-        self.Depth_label = tk.Label(self.dimpling_frame, text="Dimple depth: ", font=("Arial", 10))
-        self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, text=self.Depth_selection, font=("Arial", 10))
-        self.Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
-
-        self.TimeD_label = tk.Label(self.dimpling_frame, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
-        self.TimeD_units = tk.Label(self.dimpling_frame, text="s", font=("Arial", 10))
-        self.TD_def = IntVar()
-        self.TimeD_entry = tk.Entry(self.dimpling_frame, width=6, text=self.TD_def, font=("Arial", 10))
-        self.TD_def.set(1)
-
-
-        self.Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
-        self.Depth_entry.grid(row=2, column=1, padx=5, pady=7)
-        self.Depth_units.grid(row=2, column=2, padx=5, pady=7)
-
-
-        self.TimeD_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
-        self.TimeD_units.grid(row=3, column=2)
-        self.TimeD_entry.grid(row=3, column=1, pady=7)
 
     def connection_status_setup(self):
         # Check the connection status of Arduino and update the background color accordingly
@@ -937,28 +883,66 @@ class SetupGUI:
                 # Redraw the canvas
                 self.canvas.draw()
 
+    def show_camera_feed(self):
+        if self.camera_control.camera_connected:
+            """Display the camera feed within the GUI."""
+            frame = self.camera_control.get_frame()
 
+            img = Image.fromarray(frame).resize((500, 300))
+            imgtk = ImageTk.PhotoImage(image=img)
 
-    '''def on_closing(self):
+            if not hasattr(self, "camera_label"):
+                # Create a label for the camera feed if it doesn't exist
+                self.camera_label = tk.Label(self.camera_frame, image=imgtk)
+                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
+                self.camera_label.grid(row=0, column=0, sticky="nsew")
+            else:
+                # Update the existing label with the new image
+                self.camera_label.configure(image=imgtk)
+                self.camera_label.imgtk = imgtk  # Store a reference to prevent garbage collection
+
+        # Schedule the next frame update
+        self.root.after(10, self.show_camera_feed)
+
+    def on_closing(self):
         try:
-            self.motor_control.move_to_home_position()
-            self.arduino_control.send_command('EXIT\n')
+            #self.motor_control.move_to_home_position()
+            #self.arduino_control.send_command('EXIT\n')
             self.root.destroy()
+            print("Good work")
         except Exception as e:
             # Handle the exception gracefully, e.g., print an error message
             print(f"An error occurred during closing: {str(e)}")
-            ''' # Resets to home when closed
+
+    def update_fiber_loss(self):
+        # Input power (initial power level)
+        P_in = self.power_meter.power_data.max()
+
+        # Output power (final power level)
+        P_out = self.power_meter.read_power() # Replace with your actual output power value
+
+        # Calculate loss in decibels
+        loss_dB = 10 * math.log10(P_in / P_out)
+        self.fiber_loss_label.config(text=f"Fiber Loss: {loss_dB:.2f} Decibels")
+
+    def update_fiber_loss_periodically(self):
+        # Update the label with the latest value
+        self.update_fiber_loss()
+
+        # Schedule the next update after a specific interval (e.g., 1000 milliseconds)
+        self.root.after(500, self.update_fiber_loss_periodically)
 
 if __name__ == "__main__":
     root = tk.Tk()
 
     # Create instances of the MotorControl and ArduinoControl classes
+    camera_control = CameraControl()
     arduino_control = ArduinoControl()
     power_meter = PowerMeterControl()
     motor_control = MotorControl(arduino_control, power_meter)
 
 
-    app = SetupGUI(root, motor_control, arduino_control, power_meter)
+    app = SetupGUI(root, motor_control, arduino_control, power_meter, camera_control)
     root.mainloop()
 
 
