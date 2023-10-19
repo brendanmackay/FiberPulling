@@ -446,6 +446,8 @@ class SetupGUI:
         self.power_meter_plot_setup()
         self.connection_status_setup()
         self.live_info_setup()
+        if self.arduino_control.get_connection_status():
+            self.connection_status_frame.configure(bg="green")
 
     def setup_frames(self):
         # Create and configure the main frame
@@ -694,7 +696,6 @@ class SetupGUI:
         self.Center_button.grid(row=2, column=3, sticky="nsew")
         self.Dimple_button.grid(row=1, column=3, sticky="nsew")
         self.Reset_button.grid(row=3, column=3, sticky="nsew")
-
 
     def connection_status_setup(self):
         # Check the connection status of Arduino and update the background color accordingly
