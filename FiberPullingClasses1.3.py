@@ -523,22 +523,28 @@ class SetupGUI:
         self.connection_status_frame.grid(row=0, column=0, columnspan=3, sticky="nsew")
 
         self.tapering_frame = tk.Frame(main_frame)
-        self.tapering_frame.grid(row=1, column=0, sticky="nsew", padx=10)
+        self.tapering_frame.grid(row=1, column=0, sticky="ew", padx=10)
 
-        self.dimpling_frame = tk.Frame(main_frame)
-        self.dimpling_frame.grid(row=2, column=0, sticky="nsew", padx=10)
+        self.subframe2 = tk.Frame(main_frame)
+        self.subframe2.grid(row=2, column=0, sticky="nsew", padx=10)
+
+        self.dimpling_frame = tk.Frame(self.subframe2)
+        self.dimpling_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+
+        self.live_info_frame = tk.Frame(self.subframe2)
+        self.live_info_frame.grid(row=3, column=0, sticky="nsew", padx=10)
 
         self.subframe1 = tk.Frame(main_frame)
         self.subframe1.grid(row=3, column=0, sticky="nsew", padx=10)
 
         self.dynamic_button_frame = tk.Frame(main_frame)
-        self.dynamic_button_frame.grid(row=1, column=1, rowspan=3, sticky="nsew", padx=10)
+        self.dynamic_button_frame.grid(row=1, column=1, rowspan=2, sticky="nsew", padx=10)
 
-        self.live_data_frame = tk.Frame(main_frame, bg="white")
-        self.live_data_frame.grid(row=1, column=2, rowspan=3, sticky="nsew", pady=10, padx=10)
+        self.power_meter_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
+        self.power_meter_frame.grid(row=1, column=2, sticky="nsew", pady=10, padx=10)
 
-        #self.camera_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
-        #self.camera_frame.grid(row=2, column=2, sticky="nsew", pady=10, padx=10)
+        self.camera_frame = tk.Frame(main_frame, width=400, height=300, bg="white")
+        self.camera_frame.grid(row=2, column=2, sticky="nsew", pady=10, padx=10)
 
         # Configure column and row weights to make subframes expand with window resizing
         main_frame.columnconfigure((0, 1), weight=1)
@@ -614,11 +620,7 @@ class SetupGUI:
         self.prht_entry = tk.Entry(self.tapering_frame, width=6, text=self.prht_def, font=("Arial", 10))
         self.prht_def.set(0.5)
 
-        self.TimeD_label = tk.Label(self.tapering_frame, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
-        self.TimeD_units = tk.Label(self.tapering_frame, text="s", font=("Arial", 10))
-        self.TD_def = IntVar()
-        self.TimeD_entry = tk.Entry(self.tapering_frame, width=6, text=self.TD_def, font=("Arial", 10))
-        self.TD_def.set(1)
+
 
         self.Res1_label.grid(row=1, column=3, padx=5, pady=7)  # resolution 1 widget placements
         self.Res1_entry.grid(row=2, column=3, padx=5, pady=7)
@@ -657,10 +659,6 @@ class SetupGUI:
         self.prht_label.grid(row=7, column=0, pady=7)  # preheat widgets placements
         self.prht_entry.grid(row=7, column=1, pady=7)
         self.prht_units.grid(row=7, column=2, pady=7)
-
-        self.TimeD_label.grid(row=11, column=0, pady=7)  # time delay dimple widgets placements
-        self.TimeD_units.grid(row=11, column=2)
-        self.TimeD_entry.grid(row=11, column=1, pady=7)
 
     def dynamic_button_setup(self):
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
@@ -703,9 +701,9 @@ class SetupGUI:
         self.Emg_button.grid(row=11, column=0, pady=15, sticky="ew")
 
         # Dimple Button placement in seperate subframe
-        self.Center_button.grid(row=10, column=3, sticky="ew")
-        self.Dimple_button.grid(row=9, column=3, sticky="ew")
-        self.Reset_button.grid(row=11, column=3, sticky="ew")
+        self.Center_button.grid(row=2, column=3, sticky="ew")
+        self.Dimple_button.grid(row=1, column=3, sticky="ew")
+        self.Reset_button.grid(row=3, column=3, sticky="ew")
 
         #self.decel_button = tk.Button(self.subframe2, text="Decelerate", command=self.motor_control.decelerate)
         #self.Run_button = tk.Button(self.subframe2, text="Run", font=("Arial", 10), command=self.initiate_pulling_button_pressed)
@@ -716,7 +714,7 @@ class SetupGUI:
         # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         # prepare the widgets of the GUI for dimpling
         self.text2 = tk.Label(self.dimpling_frame, text="Dimpling:", font=(15))
-        self.text2.grid(row=8, column=0, pady=7)
+        self.text2.grid(row=0, column=0, pady=7)
 
 
         self.Speed3_label = tk.Label(self.dimpling_frame, text="Speed Motor 3: ",
@@ -726,9 +724,9 @@ class SetupGUI:
         self.Speed3_entry = tk.Entry(self.dimpling_frame, width=6, text=self.s3_def, font=("Arial", 10))
         self.s3_def.set(1000)
 
-        self.Speed3_label.grid(row=9, column=0, pady=7)  # Speed 3 widget placements
-        self.Speed3_units.grid(row=9, column=2, pady=7)
-        self.Speed3_entry.grid(row=9, column=1, pady=7)
+        self.Speed3_label.grid(row=1, column=0, pady=7)  # Speed 3 widget placements
+        self.Speed3_units.grid(row=1, column=2, pady=7)
+        self.Speed3_entry.grid(row=1, column=1, pady=7)
 
         self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
         self.Depth_selection.set(20)
@@ -736,11 +734,21 @@ class SetupGUI:
         self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, text=self.Depth_selection, font=("Arial", 10))
         self.Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
 
+        self.TimeD_label = tk.Label(self.dimpling_frame, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
+        self.TimeD_units = tk.Label(self.dimpling_frame, text="s", font=("Arial", 10))
+        self.TD_def = IntVar()
+        self.TimeD_entry = tk.Entry(self.dimpling_frame, width=6, text=self.TD_def, font=("Arial", 10))
+        self.TD_def.set(1)
 
 
-        self.Depth_label.grid(row=10, column=0, padx=5, pady=7)  # resolution 1 widget placements
-        self.Depth_entry.grid(row=10, column=1, padx=5, pady=7)
-        self.Depth_units.grid(row=10, column=2, padx=5, pady=7)
+        self.Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
+        self.Depth_entry.grid(row=2, column=1, padx=5, pady=7)
+        self.Depth_units.grid(row=2, column=2, padx=5, pady=7)
+
+
+        self.TimeD_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
+        self.TimeD_units.grid(row=3, column=2)
+        self.TimeD_entry.grid(row=3, column=1, pady=7)
 
     def connection_status_setup(self):
         # Check the connection status of Arduino and update the background color accordingly
@@ -770,6 +778,26 @@ class SetupGUI:
 
         microscope_status_label = Label(self.connection_status_frame, text=self.microscope_connection, bg="red")
         microscope_status_label.grid(row=0, column=3, columnspan=2, padx=100)
+
+    def power_meter_plot_setup(self):
+        if self.power_meter.get_connection_status():
+            # Setup Matplotlib Plot
+            self.fig, self.ax = plt.subplots(figsize=(6, 4))
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.power_meter_frame)
+            self.canvas.get_tk_widget().grid(row=0, column=0)
+
+            # Add a title to the plot
+            self.ax.set_title("Power Meter Plot")
+            self.ax.grid()
+
+            # Optionally, if you want to set labels for x and y axes:
+            self.ax.set_xlabel("Time (s)")
+            self.ax.set_ylabel("Voltage (mW)")
+
+            self.line, = self.ax.plot(self.power_meter.power_data, self.power_meter.time_data, label='Power')  # Define 'line' here
+            print("line")
+            # Call animation method (You can adjust the interval as needed)
+            self.update_power_meter_plot()
 
     def update_electrode_status(self):
         state = self.arduino_control.electrode_state
@@ -888,26 +916,6 @@ class SetupGUI:
 
             # Schedule the next update using the 'after' method
             self.root.after(100, self.update_power_meter_plot_periodically)
-
-    def power_meter_plot_setup(self):
-        if self.power_meter.get_connection_status():
-            # Setup Matplotlib Plot
-            self.fig, self.ax = plt.subplots(figsize=(6, 4))
-            self.canvas = FigureCanvasTkAgg(self.fig, master=self.live_data_frame)
-            self.canvas.get_tk_widget().grid(row=0, column=0)
-
-            # Add a title to the plot
-            self.ax.set_title("Power Meter Plot")
-            self.ax.grid()
-
-            # Optionally, if you want to set labels for x and y axes:
-            self.ax.set_xlabel("Time (s)")
-            self.ax.set_ylabel("Voltage (mW)")
-
-            self.line, = self.ax.plot(self.power_meter.power_data, self.power_meter.time_data, label='Power')  # Define 'line' here
-            print("line")
-            # Call animation method (You can adjust the interval as needed)
-            self.update_power_meter_plot()
 
     def update_power_meter_plot(self):
         if self.power_meter.get_connection_status():
