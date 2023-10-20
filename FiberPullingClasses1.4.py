@@ -31,6 +31,11 @@ class Database:
     def __init__(self, filename):
         self.filename = filename
         self.data = self.load_data()
+        self.last_used_profile = None  # Initialize last_used_profile as None
+
+        # Check if a last used profile exists in the loaded data
+        if "last_used_profile" in self.data:
+            self.last_used_profile = self.data["last_used_profile"]
 
     def load_data(self):
         try:
@@ -41,6 +46,12 @@ class Database:
             # Handle the case when the file doesn't exist or is empty
             return {"profiles": []}
 
+    def find_profile_by_name(self, profile_name):
+        for profile in self.data["profiles"]:
+            if profile.get("name") == profile_name:
+                return profile
+        return None  # Return None if the profile is not found
+
     def add_profile(self, profile):
         self.data["profiles"].append(profile)
         self.save_data()
@@ -48,9 +59,21 @@ class Database:
     def save_data(self):
         with open(self.filename, 'w') as file:
             json.dump(self.data, file, indent=4)
+            print("saved")
 
     def get_all_profiles(self):
         return self.data["profiles"]
+
+    def get_last_used_profile(self):
+        return self.last_used_profile
+
+    def set_last_used_profile(self, profile_name):
+        self.last_used_profile = profile_name
+
+        # Store the last used profile in the data dictionary
+        self.data["last_used_profile"] = profile_name
+
+        self.save_data()
 
 class CameraControl:
     def __init__(self):
@@ -563,48 +586,48 @@ class SetupGUI:
         Speed1_label = tk.Label(self.tapering_frame, text="Speed Motor 1: ", font=("Arial", 10))
         Speed1_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
         self.Speed1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Speed1_entry.insert(0, "38")
+        #self.Speed1_entry.insert(0, "38")
 
         # Speed 2 Labels and entry widgets
         Speed2_label = tk.Label(self.tapering_frame, text="Speed Motor 2: ", font=("Arial", 10))
         Speed2_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
         self.Speed2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Speed2_entry.insert(0, "930")
+        #self.Speed2_entry.insert(0, "930")
 
         Accel1_label = tk.Label(self.tapering_frame, text="Acceleration Motor 1: ", font=("Arial", 10))
         Accel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Accel1_entry.insert(0, "6")
+       # self.Accel1_entry.insert(0, "6")
 
         # deceleration 1 labels and entry widgets
         Decel1_label = tk.Label(self.tapering_frame, text="Deceleration Motor 1: ", font=("Arial", 10))
         Decel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Decel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Decel1_entry.insert(0, "6")
+        #self.Decel1_entry.insert(0, "6")
 
         # Acceleration 1 labels and entry widgets
         Accel2_label = tk.Label(self.tapering_frame, text="Acceleration Motor 2: ", font=("Arial", 10))
         Accel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Accel2_entry.insert(0, "160")
+        #self.Accel2_entry.insert(0, "160")
 
         # deceleration 1 labels and entry widgets
         Decel2_label = tk.Label(self.tapering_frame, text="Deceleration Motor 2: ", font=("Arial", 10))
         Decel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Decel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.Decel2_entry.insert(0, "160")
+        #self.Decel2_entry.insert(0, "160")
 
         # preheat labels and entry widgets
         prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))
         prht_units = tk.Label(self.tapering_frame, text="ms", font=("Arial", 10))
         self.prht_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.prht_entry.insert(0, "600")
+        #self.prht_entry.insert(0, "600")
 
         # preheat labels and entry widgets
         max_speed_time = tk.Label(self.tapering_frame, text="Max Speed Time:", font=("Arial", 10))
         max_speed_time_units = tk.Label(self.tapering_frame, text="ms", font=("Arial", 10))
         self.max_speed_time_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        self.max_speed_time_entry.insert(0, "2000")
+        #self.max_speed_time_entry.insert(0, "2000")
 
         tapering_label.grid(row=0, column=0, padx=5, pady=2)
 
@@ -660,20 +683,20 @@ class SetupGUI:
         Speed3_label = tk.Label(self.dimpling_frame, text="Speed Motor 3: ", font=("Arial", 10))
         Speed3_units = tk.Label(self.dimpling_frame, text="Steps/s", font=("Arial", 10))
         self.Speed3_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
-        self.Speed3_entry.insert(0, "1000")
+        #self.Speed3_entry.insert(0, "1000")
 
 
         # resolution 3 labels and option menu widgets
         Depth_label = tk.Label(self.dimpling_frame, text="Dimple depth: ", font=("Arial", 10))
-        self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
+        self.Dimple_depth_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
         Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
-        self.Depth_entry.insert(0, "20")
+        #self.Dimple_depth_entry.insert(0, "20")
 
         # Heating Time label and entry options during dimpling
         Heat_time_label = tk.Label(self.dimpling_frame, text="Heat Time:", font=("Arial", 10))  # time delay labels and entry widgets
         Heat_time_units = tk.Label(self.dimpling_frame, text="ms", font=("Arial", 10))
         self.Heat_time_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
-        self.Heat_time_entry.insert(0, "1000")
+        #self.Heat_time_entry.insert(0, "1000")
 
         # Speed 3 widget placements
         Speed3_label.grid(row=1, column=0, pady=7)
@@ -681,7 +704,7 @@ class SetupGUI:
         self.Speed3_entry.grid(row=1, column=1, pady=7)
 
         Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
-        self.Depth_entry.grid(row=2, column=1, padx=5, pady=7)
+        self.Dimple_depth_entry.grid(row=2, column=1, padx=5, pady=7)
         Depth_units.grid(row=2, column=2, padx=5, pady=7)
 
 
@@ -813,6 +836,12 @@ class SetupGUI:
         self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_profile)
         self.delete_button.grid(row=2, column=1, padx=10, pady=5)
 
+        # Load the last used profile on startup
+        last_used_profile = database.get_last_used_profile()
+        if last_used_profile:
+            self.load_selected_profile(last_used_profile)
+
+
     def load_profiles(self):
         # Clear the listbox
         self.profile_listbox.delete(0, tk.END)
@@ -822,15 +851,54 @@ class SetupGUI:
         for profile in profiles:
             self.profile_listbox.insert(tk.END, profile["name"])
 
-    def load_selected_profile(self):
-        # Get the selected profile name from the listbox
-        selected_index = self.profile_listbox.curselection()
-        if selected_index:
-            selected_index = selected_index[0]
-            selected_profile_name = self.profile_listbox.get(selected_index)
+    def load_selected_profile(self, profile_name=None):
+        if profile_name is None:
+            # Get the selected profile name from the listbox
+            selected_profile_name = self.profile_listbox.get(tk.ACTIVE)
+        else:
+            selected_profile_name = profile_name
 
-            # You can now use the selected_profile_name to retrieve and use the profile data
-            # For example, fetch the profile data from the database and perform actions based on it
+        # Update the last used profile and save it to the database
+        self.database.set_last_used_profile(selected_profile_name)
+
+        # Find the profile in the database by name
+        selected_profile = self.database.find_profile_by_name(selected_profile_name)
+
+        # Check if the selected_profile exists
+        if selected_profile:
+            # Populate the Entry widgets with the profile data
+            self.Speed1_entry.delete(0, tk.END)
+            self.Speed1_entry.insert(0, selected_profile["motor_speeds"][0])
+            # Repeat this for other Entry widgets and parameters
+            self.Speed2_entry.delete(0, tk.END)
+            self.Speed2_entry.insert(0, selected_profile["motor_speeds"][1])
+            # Repeat this for other Entry widgets and parameters
+            self.Speed3_entry.delete(0, tk.END)
+            self.Speed3_entry.insert(0, selected_profile["motor_speeds"][2])
+            # Repeat this for other Entry widgets and parameters
+            self.Accel1_entry.delete(0, tk.END)
+            self.Accel1_entry.insert(0, selected_profile["motor_accelerations"][0])
+            # Repeat this for other Entry widgets and parameters
+            self.Accel2_entry.delete(0, tk.END)
+            self.Accel2_entry.insert(0, selected_profile["motor_accelerations"][1])
+            # Repeat this for other Entry widgets and parameters
+            self.Decel1_entry.delete(0, tk.END)
+            self.Decel1_entry.insert(0, selected_profile["motor_decelerations"][0])
+            # Repeat this for other Entry widgets and parameters
+            self.Decel2_entry.delete(0, tk.END)
+            self.Decel2_entry.insert(0, selected_profile["motor_decelerations"][1])
+            # Repeat this for other Entry widgets and parameters
+            self.max_speed_time_entry.delete(0, tk.END)
+            self.max_speed_time_entry.insert(0, selected_profile["max_speed_time"])
+            # Repeat this for other Entry widgets and parameters
+            self.prht_entry.delete(0, tk.END)
+            self.prht_entry.insert(0, selected_profile["preheat_time"])
+            # Repeat this for other Entry widgets and parameters
+            self.Heat_time_entry.delete(0, tk.END)
+            self.Heat_time_entry.insert(0, selected_profile["dimple_heat_time"])
+            # Repeat this for other Entry widgets and parameters
+            self.Dimple_depth_entry.delete(0, tk.END)
+            self.Dimple_depth_entry.insert(0, selected_profile["dimple_depth"])
 
     def add_profile(self):
         # Implement a dialog to add a new profile with parameters and store it in the database
@@ -865,7 +933,7 @@ class SetupGUI:
 
     def dimple_button_pressed(self):
         speed = self.Speed3_entry.get()
-        depth = self.Depth_entry.get()
+        depth = self.Dimple_depth_entry.get()
         time_delay = self.Heat_time_entry.get()
         print(type(time_delay), "time delay")
         # Check if Arduino is connected before performing dimple
@@ -917,7 +985,7 @@ class SetupGUI:
         prht_entry = self.prht_entry.get()
 
         dimple_speed = self.Speed3_entry.get()
-        dimple_depth = self.Depth_entry.get()
+        dimple_depth = self.Dimple_depth_entry.get()
         dimple_heat_time = self.Heat_time_entry.get()
 
         # Check if Arduino is connected before performing dimple
