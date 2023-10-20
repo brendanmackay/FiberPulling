@@ -13,6 +13,7 @@ import serial.tools.list_ports
 import time
 import threading #threading
 import cv2 #for video
+import json
 import math
 from PIL import Image, ImageTk
 import matplotlib #for graph
@@ -25,6 +26,32 @@ import random
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
 NavigationToolbar2Tk)
 matplotlib.use('Agg')
+
+class Database:
+    def __init__(self, filename):
+        self.filename = filename
+        self.data = self.load_data()
+
+    def load_data(self):
+        try:
+            with open(self.filename, 'r') as file:
+                data = json.load(file)
+            return data
+        except FileNotFoundError:
+            # Handle the case when the file doesn't exist or is empty
+            return {"profiles": []}
+
+    def add_profile(self, profile):
+        self.data["profiles"].append(profile)
+        self.save_data()
+
+    def save_data(self):
+        with open(self.filename, 'w') as file:
+            json.dump(self.data, file, indent=4)
+
+    def get_all_profiles(self):
+        return self.data["profiles"]
+
 
 class CameraControl:
     def __init__(self):
@@ -944,11 +971,11 @@ if __name__ == "__main__":
     root = tk.Tk()
 
     # Create instances of the MotorControl and ArduinoControl classes
+    database = Database("database.json")
     camera_control = CameraControl()
     arduino_control = ArduinoControl()
     power_meter = PowerMeterControl()
     motor_control = MotorControl(arduino_control, power_meter)
-
 
     app = SetupGUI(root, motor_control, arduino_control, power_meter, camera_control)
     root.mainloop()
