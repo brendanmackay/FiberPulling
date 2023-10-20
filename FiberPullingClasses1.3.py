@@ -242,8 +242,7 @@ class MotorControl:
         elif Res2_val == "Low Resolution":
             Res2 = 'RESLO_2\n'
 
-        prht_s = float(str(prht_entry))
-        prht = 'prht' + str(int(prht_s * 1000)) + '\n'
+        prht = 'prht' + str(prht_entry) + '\n'
 
         Time = 'GO'
 
@@ -276,13 +275,12 @@ class MotorControl:
         self.arduino_control.send_command('DECEL\n')  # electrodes
         print("Decelerating")
 
-    def dimple(self, speed, depth, time_delay):
+    def dimple(self, speed, depth, heat_time):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
         Speed3 = 'SETSP_3' + str(speed) + '\n'
         Depth_val = 'DIMPL' + str(depth) + '\n'
-        TimeD_s = 'TIME' + str(time_delay * 1000) + '\n'
-
+        TimeD_s = 'TIME' + str(heat_time)+ '\n'
         time.sleep(0.1)
         self.arduino_control.send_command(Speed3)  # Removed encode() here
         time.sleep(0.5)
@@ -299,8 +297,8 @@ class MotorControl:
 
 
     def automate_dimple(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                     enab_selection, Res1_selection, Res2_selection, prht_entry, dimple_speed, dimple_depth,
-                     dimple_time_delay):
+                        enab_selection, Res1_selection, Res2_selection, prht_entry, dimple_speed, dimple_depth,
+                        dimple_heat_time):
 
         self.power_meter.clear_power_meter_data()
 
@@ -328,7 +326,7 @@ class MotorControl:
         # self.move_motor_1(speed=50, steps=-20)
 
         # Dimple the taper
-        self.dimple(dimple_speed, dimple_depth, dimple_time_delay)
+        self.dimple(dimple_speed, dimple_depth, dimple_heat_time)
         while True:
             status = self.arduino_control.read_from_arduino()
             if status == "Dimple complete":
@@ -569,10 +567,10 @@ class SetupGUI:
         D2_def.set(160)
 
         prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))  # preheat labels and entry widgets
-        prht_units = tk.Label(self.tapering_frame, text="s", font=("Arial", 10))
+        prht_units = tk.Label(self.tapering_frame, text="ms", font=("Arial", 10))
         prht_def = IntVar()
         self.prht_entry = tk.Entry(self.tapering_frame, width=6, text=prht_def, font=("Arial", 10))
-        prht_def.set(0.5)
+        prht_def.set(600)
 
         tapering_label.grid(row=0, column=0, padx=5, pady=7)
 
@@ -632,17 +630,17 @@ class SetupGUI:
         Speed3_units.grid(row=1, column=2, pady=7)
         self.Speed3_entry.grid(row=1, column=1, pady=7)
 
-        self.Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
-        self.Depth_selection.set(20)
+        Depth_selection = IntVar()  # resolution 3 labels and option menu widgets
+        Depth_selection.set(20)
         Depth_label = tk.Label(self.dimpling_frame, text="Dimple depth: ", font=("Arial", 10))
-        self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, text=self.Depth_selection, font=("Arial", 10))
+        self.Depth_entry = tk.Entry(self.dimpling_frame, width=6, text=Depth_selection, font=("Arial", 10))
         Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
 
-        TimeD_label = tk.Label(self.dimpling_frame, text="Time Delay:", font=("Arial", 10))  # time delay labels and entry widgets
-        TimeD_units = tk.Label(self.dimpling_frame, text="s", font=("Arial", 10))
-        TD_def = IntVar()
-        self.TimeD_entry = tk.Entry(self.dimpling_frame, width=6, text=TD_def, font=("Arial", 10))
-        TD_def.set(1)
+        Heat_time_label = tk.Label(self.dimpling_frame, text="Heat Time:", font=("Arial", 10))  # time delay labels and entry widgets
+        Heat_time_units = tk.Label(self.dimpling_frame, text="ms", font=("Arial", 10))
+        Heat_time_def = IntVar()
+        self.Heat_time_entry = tk.Entry(self.dimpling_frame, width=6, text=Heat_time_def, font=("Arial", 10))
+        Heat_time_def.set(1000)
 
 
         Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
@@ -650,9 +648,9 @@ class SetupGUI:
         Depth_units.grid(row=2, column=2, padx=5, pady=7)
 
 
-        TimeD_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
-        TimeD_units.grid(row=3, column=2)
-        self.TimeD_entry.grid(row=3, column=1, pady=7)
+        Heat_time_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
+        Heat_time_units.grid(row=3, column=2)
+        self.Heat_time_entry.grid(row=3, column=1, pady=7)
 
     def dynamic_button_setup(self):
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
@@ -770,8 +768,9 @@ class SetupGUI:
 
     def dimple_button_pressed(self):
         speed = self.Speed3_entry.get()
-        depth = self.Depth_selection.get()
-        time_delay = self.TimeD_entry.get()
+        depth = self.Depth_entry.get()
+        time_delay = self.Heat_time_entry.get()
+        print(type(time_delay), "time delay")
         # Check if Arduino is connected before performing dimple
         if self.arduino_control.get_connection_status() == "Not Connected":
             print("Error", "Arduino is not connected.")
@@ -821,8 +820,8 @@ class SetupGUI:
         prht_entry = self.prht_entry.get()
 
         dimple_speed = self.Speed3_entry.get()
-        dimple_depth = self.Depth_selection.get()
-        dimple_time_delay = self.TimeD_entry.get()
+        dimple_depth = self.Depth_entry.get()
+        dimple_heat_time = self.Heat_time_entry.get()
 
         # Check if Arduino is connected before performing dimple
         if self.arduino_control.get_connection_status() == "Not Connected":
@@ -832,7 +831,7 @@ class SetupGUI:
 
         thread = threading.Thread(target=self.motor_control.automate_dimple, args=(Speed1_entry, Speed2_entry, Accel1_entry,
                                     Accel2_entry, Decel1_entry, Decel2_entry, enab_selection, Res1_selection,
-                                    Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_time_delay))
+                                    Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_heat_time))
         thread.start()
 
     def automate_taper_button_pressed(self):
@@ -934,11 +933,12 @@ class SetupGUI:
         self.fiber_loss_label.config(text=f"Fiber Transmission: {transmission_percent:.2f} Percent")
 
     def update_fiber_loss_periodically(self):
-        # Update the label with the latest value
-        self.update_fiber_loss()
+        if self.power_meter.get_connection_status():
+            # Update the label with the latest value
+            self.update_fiber_loss()
 
-        # Schedule the next update after a specific interval (e.g., 1000 milliseconds)
-        self.root.after(500, self.update_fiber_loss_periodically)
+            # Schedule the next update after a specific interval (e.g., 1000 milliseconds)
+            self.root.after(500, self.update_fiber_loss_periodically)
 
 if __name__ == "__main__":
     root = tk.Tk()
