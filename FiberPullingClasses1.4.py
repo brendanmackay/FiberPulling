@@ -26,7 +26,7 @@ import random
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
 NavigationToolbar2Tk)
 matplotlib.use('Agg')
-
+#
 class Database:
     def __init__(self, filename):
         self.filename = filename
