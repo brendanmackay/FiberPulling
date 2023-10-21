@@ -17,7 +17,7 @@
                 160,
                 0
             ],
-            "max_speed_time": 2,
+            "max_speed_time": 2000,
             "preheat_time": 800,
             "dimple_depth": 20,
             "dimple_heat_time": 1000,
@@ -49,7 +49,7 @@
                 0,
                 0
             ],
-            "max_speed_time": 2,
+            "max_speed_time": 0,
             "preheat_time": 0,
             "dimple_depth": 0,
             "dimple_heat_time": 0,
@@ -60,8 +60,8 @@
             ],
             "knife_calibration_height": 87900,
             "tension_steps": [
-                5,
-                5
+                0,
+                0
             ]
         }
     ],
