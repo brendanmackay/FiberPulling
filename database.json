@@ -27,10 +27,9 @@
                 "low"
             ],
             "knife_calibration_height": 87900,
-            "tension_ratio": [
-                1.0,
-                1.2,
-                1.5
+            "tension_steps": [
+                5,
+                5
             ]
         },
         {
@@ -60,10 +59,9 @@
                 "low"
             ],
             "knife_calibration_height": 87900,
-            "tension_ratio": [
-                0,
-                0,
-                0
+            "tension_steps": [
+                5,
+                5
             ]
         }
     ],

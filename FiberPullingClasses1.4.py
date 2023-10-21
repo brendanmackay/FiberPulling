@@ -165,6 +165,8 @@ class ArduinoControl:
         self.electrode_state = False  # Initialize the electrode state
         self.connection_status = "Not Connected"  # Initialize status as "Not Connected"
         self.auto_connect()
+
+        #The following code can help trouble shoot arduino issues
         #self.data_thread = threading.Thread(target=self.read_data_from_arduino)
         #self.data_thread.daemon = True  # Set as daemon so it exits when the main program exits
         #self.data_thread.start()
@@ -342,12 +344,17 @@ class MotorControl:
         self.arduino_control.send_command('DECEL\n')  # electrodes
         print("Decelerating")
 
-    def dimple(self, speed, depth, heat_time):
+    def dimple(self, speed, depth, heat_time, tension1, tension2):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
+        tension_2 = 'TEN2' + str(tension2) + '\n'
+        tension_1 = 'TEN1' + str(tension1) + '\n'
         Speed3 = 'SETSP_3' + str(speed) + '\n'
         Depth_val = 'DIMPL' + str(depth) + '\n'
         TimeD_s = 'TIME' + str(heat_time)+ '\n'
+        self.arduino_control.send_command(tension_2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(tension_1)
         time.sleep(0.1)
         self.arduino_control.send_command(Speed3)  # Removed encode() here
         time.sleep(0.5)
@@ -401,6 +408,85 @@ class MotorControl:
             time.sleep(1)
         self.power_meter.save_power_meter_data()
 
+
+    def automate_taper_2(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
+                     enab_selection, Res1_selection, Res2_selection, prht_entry, taper_time):
+
+        self.power_meter.clear_power_meter_data()
+
+        Speed1 = 'SETSP_1' + str(Speed1_entry) + '\n'
+        Speed2 = 'SETSP_2' + str(Speed2_entry) + '\n'
+        Accel1 = 'SETAC_1' + str(Accel1_entry) + '\n'
+        Accel2 = 'SETAC_2' + str(Accel2_entry) + '\n'
+        Decel1 = 'SETDC_1' + str(Decel1_entry) + '\n'  # acquire deceleration
+        Decel2 = 'SETDC_2' + str(Decel2_entry) + '\n'
+
+        enab_val = str(enab_selection)
+        if enab_val == "Yes":
+            enab1 = 'ENABL_1\n'
+            enab2 = 'ENABL_2\n'
+            print("Enabled")
+        elif enab_val == "No":
+            enab1 = 'DISAB_1\n'
+            enab2 = 'DISAB_2\n'
+            print("Disabled")
+
+        Res1_val = str(Res1_selection)
+        Res2_val = str(Res2_selection)
+
+        if Res1_val == "High Resolution":
+            Res1 = 'RESHI_1\n'
+        elif Res1_val == "Mid Resolution":
+            Res1 = 'RESHA_1\n'
+        elif Res1_val == "Low Resolution":
+            Res1 = 'RESLO_1\n'
+
+        if Res2_val == "High Resolution":
+            Res2 = 'RESHI_2\n'
+        elif Res2_val == "Mid Resolution":
+            Res2 = 'RESHA_2\n'
+        elif Res2_val == "Low Resolution":
+            Res2 = 'RESLO_2\n'
+
+        prht = 'prht' + str(prht_entry) + '\n'
+
+        perform_taper = 'TAPERL' # This is the linear taper function
+
+        taper_time = "TAP_T" +str(taper_time)+ '\n'
+
+        # Use your ArduinoControl object to send commands
+        self.arduino_control.send_command(Speed1)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Speed2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Accel1)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Accel2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Decel1)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Decel2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Res1)
+        time.sleep(0.1)
+        self.arduino_control.send_command(Res2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(enab1)
+        time.sleep(0.1)
+        self.arduino_control.send_command(enab2)
+        time.sleep(0.1)
+        self.arduino_control.send_command(prht)
+        time.sleep(0.1)
+        self.arduino_control.send_command(taper_time)
+        self.sleep(0.1)
+        self.arduino_control.send_command(perform_taper)
+
+        while True:
+            status = self.arduino_control.read_from_arduino()  # assuming you have such a method
+            if status == "Tapering Complete":
+                break
+            time.sleep(0.1)  # Wait for a short period before checking again
+        self.power_meter.save_power_meter_data()
     def automate_taper(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
                      enab_selection, Res1_selection, Res2_selection, prht_entry):
 
@@ -704,19 +790,34 @@ class SetupGUI:
         Heat_time_units = tk.Label(self.dimpling_frame, text="ms", font=("Arial", 10))
         self.Heat_time_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
 
+        # Tension label and entry widgets
+        Tension_1_label = tk.Label(self.dimpling_frame, text="Tension Motor 1:", font=("Arial", 10))
+        Tension_1_units = tk.Label(self.dimpling_frame, text="steps", font=("Arial", 10))
+        self.Tension_1_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
+        Tension_2_label = tk.Label(self.dimpling_frame, text="Tension Motor 2:", font=("Arial", 10))
+        Tension_2_units = tk.Label(self.dimpling_frame, text="steps", font=("Arial", 10))
+        self.Tension_2_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
+
         # Speed 3 widget placements
-        Speed3_label.grid(row=1, column=0, pady=7)
-        Speed3_units.grid(row=1, column=2, pady=7)
-        self.Speed3_entry.grid(row=1, column=1, pady=7)
+        Speed3_label.grid(row=1, column=0, pady=2)
+        Speed3_units.grid(row=1, column=2, pady=2)
+        self.Speed3_entry.grid(row=1, column=1, pady=2)
 
-        Depth_label.grid(row=2, column=0, padx=5, pady=7)  # resolution 1 widget placements
-        self.Dimple_depth_entry.grid(row=2, column=1, padx=5, pady=7)
-        Depth_units.grid(row=2, column=2, padx=5, pady=7)
+        Depth_label.grid(row=2, column=0, padx=5, pady=2)  # resolution 1 widget placements
+        self.Dimple_depth_entry.grid(row=2, column=1, padx=5, pady=2)
+        Depth_units.grid(row=2, column=2, padx=5, pady=2)
 
 
-        Heat_time_label.grid(row=3, column=0, pady=7)  # time delay dimple widgets placements
+        Heat_time_label.grid(row=3, column=0, pady=2)  # time delay dimple widgets placements
         Heat_time_units.grid(row=3, column=2)
-        self.Heat_time_entry.grid(row=3, column=1, pady=7)
+        self.Heat_time_entry.grid(row=3, column=1, pady=2)
+
+        Tension_1_label.grid(row=4, column=0, pady=2)  # Tension dimple widgets placements
+        Tension_1_units.grid(row=4, column=2)
+        self.Tension_1_entry.grid(row=4, column=1, pady=2)
+        Tension_2_label.grid(row=5, column=0, pady=2)
+        Tension_2_units.grid(row=5, column=2)
+        self.Tension_2_entry.grid(row=5, column=1, pady=2)
 
     def dynamic_button_setup(self):
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
@@ -747,18 +848,18 @@ class SetupGUI:
 
         # Dimpling Frame Buttons
         self.Reset_button = tk.Button(self.dimpling_frame, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
-                                      , padx=10, pady=10)
+                                      , padx=10, pady=2)
         self.Center_button = tk.Button(self.dimpling_frame, text="Center", command=self.motor_control.center_taper,
-                                       font=("Arial", 10), padx=10, pady=10)
+                                       font=("Arial", 10), padx=10, pady=2)
         self.Dimple_button = tk.Button(self.dimpling_frame, text="Dimple", font=("Arial", 10),
-                                       command=self.dimple_button_pressed, padx=10, pady=10)
+                                       command=self.dimple_button_pressed, padx=10, pady=2)
 
         self.Calibrate_button = tk.Button(self.dimpling_frame, text="Calibrate Knife", font=("Arial", 10),
-                                          command=self.motor_control.calibrate_knife, pady=10)
-        self.Calibrate_up_button = tk.Button(self.dimpling_frame, text="Knife Up 1000 steps", font=("Arial", 8),
-                                             command=self.motor_control.calibrate_up_knife, pady=10)
-        self.Calibrate_down_button = tk.Button(self.dimpling_frame, text="Knife Down 1000 steps", font=("Arial", 8),
-                                               command=self.motor_control.calibrate_down_knife, pady=10)
+                                          command=self.motor_control.calibrate_knife, pady=2)
+        self.Calibrate_up_button = tk.Button(self.dimpling_frame, text="Knife Up 500 steps", font=("Arial", 8),
+                                             command=self.motor_control.calibrate_up_knife, pady=2)
+        self.Calibrate_down_button = tk.Button(self.dimpling_frame, text="Knife Down 500 steps", font=("Arial", 8),
+                                               command=self.motor_control.calibrate_down_knife, pady=2)
 
 
 
@@ -908,6 +1009,12 @@ class SetupGUI:
             # Repeat this for other Entry widgets and parameters
             self.Dimple_depth_entry.delete(0, tk.END)
             self.Dimple_depth_entry.insert(0, selected_profile["dimple_depth"])
+            # Repeat this for other Entry widgets and parameters
+            self.Tension_1_entry.delete(0, tk.END)
+            self.Tension_1_entry.insert(0, selected_profile["tension_steps"][0])
+            # Repeat this for other Entry widgets and parameters
+            self.Tension_2_entry.delete(0, tk.END)
+            self.Tension_2_entry.insert(0, selected_profile["tension_steps"][1])
 
     def add_profile(self):
         # Implement a dialog to add a new profile with parameters and store it in the database
