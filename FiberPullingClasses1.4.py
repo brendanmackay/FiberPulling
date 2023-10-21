@@ -165,6 +165,9 @@ class ArduinoControl:
         self.electrode_state = False  # Initialize the electrode state
         self.connection_status = "Not Connected"  # Initialize status as "Not Connected"
         self.auto_connect()
+        #self.data_thread = threading.Thread(target=self.read_data_from_arduino)
+        #self.data_thread.daemon = True  # Set as daemon so it exits when the main program exits
+        #self.data_thread.start()
 
     def toggle_electrodes_state(self):  # This function turns electrodes on and off
         if self.electrode_state:
@@ -199,6 +202,21 @@ class ArduinoControl:
     def read_from_arduino(self):
         if self.arduino:
             return self.arduino.readline().decode().strip()
+
+    def read_data_from_arduino(self):
+        while True:
+            if self.arduino:
+                try:
+                    data = self.arduino.readline().decode().strip()
+                    print(f"Arduino Data: {data}")
+                except Exception as e:
+                    print(f"Error reading from Arduino: {e}")
+            time.sleep(0.1)  # Adjust the sleep interval as needed
+
+    def fiber_broken(self):
+        time.sleep(0.1)
+        self.send_command('BROKEN\n')
+        print("Fiber Broken")
 
     def get_connection_status(self):
         if self.connection_status.startswith("Connected"):
@@ -586,48 +604,40 @@ class SetupGUI:
         Speed1_label = tk.Label(self.tapering_frame, text="Speed Motor 1: ", font=("Arial", 10))
         Speed1_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
         self.Speed1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.Speed1_entry.insert(0, "38")
 
         # Speed 2 Labels and entry widgets
         Speed2_label = tk.Label(self.tapering_frame, text="Speed Motor 2: ", font=("Arial", 10))
         Speed2_units = tk.Label(self.tapering_frame, text="Steps/s", font=("Arial", 10))
         self.Speed2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.Speed2_entry.insert(0, "930")
 
         Accel1_label = tk.Label(self.tapering_frame, text="Acceleration Motor 1: ", font=("Arial", 10))
         Accel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-       # self.Accel1_entry.insert(0, "6")
 
         # deceleration 1 labels and entry widgets
         Decel1_label = tk.Label(self.tapering_frame, text="Deceleration Motor 1: ", font=("Arial", 10))
         Decel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Decel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.Decel1_entry.insert(0, "6")
 
         # Acceleration 1 labels and entry widgets
         Accel2_label = tk.Label(self.tapering_frame, text="Acceleration Motor 2: ", font=("Arial", 10))
         Accel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.Accel2_entry.insert(0, "160")
 
         # deceleration 1 labels and entry widgets
         Decel2_label = tk.Label(self.tapering_frame, text="Deceleration Motor 2: ", font=("Arial", 10))
         Decel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Decel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.Decel2_entry.insert(0, "160")
 
         # preheat labels and entry widgets
         prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))
         prht_units = tk.Label(self.tapering_frame, text="ms", font=("Arial", 10))
         self.prht_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.prht_entry.insert(0, "600")
 
         # preheat labels and entry widgets
         max_speed_time = tk.Label(self.tapering_frame, text="Max Speed Time:", font=("Arial", 10))
         max_speed_time_units = tk.Label(self.tapering_frame, text="ms", font=("Arial", 10))
         self.max_speed_time_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-        #self.max_speed_time_entry.insert(0, "2000")
 
         tapering_label.grid(row=0, column=0, padx=5, pady=2)
 
@@ -683,20 +693,16 @@ class SetupGUI:
         Speed3_label = tk.Label(self.dimpling_frame, text="Speed Motor 3: ", font=("Arial", 10))
         Speed3_units = tk.Label(self.dimpling_frame, text="Steps/s", font=("Arial", 10))
         self.Speed3_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
-        #self.Speed3_entry.insert(0, "1000")
-
 
         # resolution 3 labels and option menu widgets
         Depth_label = tk.Label(self.dimpling_frame, text="Dimple depth: ", font=("Arial", 10))
         self.Dimple_depth_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
         Depth_units = tk.Label(self.dimpling_frame, text="Steps", font=("Arial", 10))
-        #self.Dimple_depth_entry.insert(0, "20")
 
         # Heating Time label and entry options during dimpling
         Heat_time_label = tk.Label(self.dimpling_frame, text="Heat Time:", font=("Arial", 10))  # time delay labels and entry widgets
         Heat_time_units = tk.Label(self.dimpling_frame, text="ms", font=("Arial", 10))
         self.Heat_time_entry = tk.Entry(self.dimpling_frame, width=6, font=("Arial", 10))
-        #self.Heat_time_entry.insert(0, "1000")
 
         # Speed 3 widget placements
         Speed3_label.grid(row=1, column=0, pady=7)
@@ -728,12 +734,16 @@ class SetupGUI:
         self.Tension_button = tk.Button(self.dynamic_button_frame, text="Tension Fiber", font=("Arial", 10),
                                         command=self.tension_button_pressed, pady=10)
 
+        self.Fiber_broken_button = tk.Button(self.dynamic_button_frame, text ="Fiber Broken", font = ("Arial", 10),
+                                             command =self.arduino_control.fiber_broken, pady=10)
         # Dynamic Button Frame placement
         self.Automate_dimple_button.grid(row=1, column=0, pady=5, sticky="nsew")
         self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
-        self.Tension_button.grid(row=6, column=0, pady=5, sticky="nsew")
-        self.elec_toggle_button.grid(row=10, column=0, pady=5,  sticky="nsew")
-        self.Emg_button.grid(row=11, column=0, pady=5, sticky="nsew")
+        self.Tension_button.grid(row=3, column=0, pady=5, sticky="nsew")
+        self.Fiber_broken_button.grid(row=4, column=0, pady=5, sticky="nsew")
+
+        self.elec_toggle_button.grid(row=15, column=0, pady=5,  sticky="nsew")
+        self.Emg_button.grid(row=6, column=0, pady=5, sticky="nsew")
 
         # Dimpling Frame Buttons
         self.Reset_button = tk.Button(self.dimpling_frame, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
@@ -840,7 +850,6 @@ class SetupGUI:
         last_used_profile = database.get_last_used_profile()
         if last_used_profile:
             self.load_selected_profile(last_used_profile)
-
 
     def load_profiles(self):
         # Clear the listbox
