@@ -1025,7 +1025,7 @@ class SetupGUI:
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
         """This function performs the entire tapering and dimpling process with the parameters found below."""
-        thread = threading.Thread(target=self.motor_control.automate_dimple, args=())
+        thread = threading.Thread(target=self.motor_control.taper_and_dimple, args=())
         thread.start()
 
     def automate_taper_button_pressed(self):

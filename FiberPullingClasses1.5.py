@@ -367,21 +367,30 @@ class MotorControl:
     def dimple(self):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
+
+        self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
         self.arduino_control.send_command("DIMPLE")  # Removed encode() here
         print("Dimpling")
+        while True:
+            status = self.arduino_control.read_from_arduino()
+            if status == "Dimple complete":
+                break
+            time.sleep(1)
+        self.power_meter.save_power_meter_data()
 
-    def automate_dimple(self):
+
+    def taper_and_dimple(self):
 
         self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
         self.arduino_control.send_command('TAPERL')
-
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
             if status == "Tapering Complete":
                 break
             time.sleep(0.1)  # Wait for a short period before checking again
+        self.power_meter.save_power_meter_data()
 
         self.center_taper()
         while True:
@@ -391,13 +400,18 @@ class MotorControl:
             time.sleep(1)
 
         # Dimple the taper
-        self.dimple()
+        self.power_meter.clear_power_meter_data()
+        time.sleep(0.1)
+        self.arduino_control.send_command("DIMPLE")  # Removed encode() here
+        print("Dimpling")
         while True:
             status = self.arduino_control.read_from_arduino()
             if status == "Dimple complete":
                 break
             time.sleep(1)
         self.power_meter.save_power_meter_data()
+
+
 
     def automate_taper(self):
 
@@ -495,6 +509,9 @@ class GUIcontrol:
 
         # Show camera feed
         self.show_camera_feed()
+
+        # Assign initial GUI parameters
+        self.assign_gui_parameters()
 
     def setup_gui(self):
         root.title('Fiber Pulling')
@@ -724,9 +741,9 @@ class GUIcontrol:
         self.Tension_2_entry.grid(row=5, column=1, pady=2)
 
     def dynamic_button_setup(self):
-        self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
-                                                command=self.automate_dimple_button_pressed, pady=10)
-        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Automate Taper", font=("Arial", 10),
+        self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Taper & Dimple", font=("Arial", 10),
+                                                command=self.taper_dimple_button_pressed, pady=10)
+        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Taper", font=("Arial", 10),
                                                command=self.automate_taper_button_pressed, pady=10)
 
         self.Emg_button = tk.Button(self.dynamic_button_frame, text="EMERGENCY STOP", command=self.arduino_control.emergency_stop,
@@ -979,22 +996,23 @@ class GUIcontrol:
                                                 dimple_heat_time, tension_1, tension_2)
 
     def dimple_button_pressed(self):
-        thread = threading.Thread(target=self.motor_control.dimple, args=())
-        thread.start()
-
-    def automate_dimple_button_pressed(self):
         # begin updating the power meter
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
-        """This function performs the entire tapering and dimpling process with the parameters found below."""
-        thread = threading.Thread(target=self.motor_control.automate_dimple, args=())
+        thread = threading.Thread(target=self.motor_control.dimple, args=())
+        thread.start()
+
+    def taper_dimple_button_pressed(self):
+        # begin updating the power meter
+        self.update_power_meter_plot_periodically()
+        self.update_fiber_loss_periodically()
+        thread = threading.Thread(target=self.motor_control.taper_and_dimple, args=())
         thread.start()
 
     def automate_taper_button_pressed(self):
         # begin updating the power meter
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
-
         thread = threading.Thread(target=self.motor_control.automate_taper, args=())
         thread.start()
 

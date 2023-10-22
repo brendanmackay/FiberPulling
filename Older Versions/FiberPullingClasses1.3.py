@@ -856,9 +856,9 @@ class SetupGUI:
             return
 
 
-        thread = threading.Thread(target=self.motor_control.automate_dimple, args=(Speed1_entry, Speed2_entry, Accel1_entry,
-                                    Accel2_entry, Decel1_entry, Decel2_entry, enab_selection, Res1_selection,
-                                    Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_heat_time))
+        thread = threading.Thread(target=self.motor_control.taper_and_dimple, args=(Speed1_entry, Speed2_entry, Accel1_entry,
+                                                                                    Accel2_entry, Decel1_entry, Decel2_entry, enab_selection, Res1_selection,
+                                                                                    Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_heat_time))
         thread.start()
 
     def automate_taper_button_pressed(self):
