@@ -313,94 +313,128 @@ class MotorControl:
 
         prht = 'prht' + str(prht_entry) + '\n'
 
-        Time = 'GO'
+        waist_time = "WAIST_T" + str(waist_time) + '\n'
 
         # Use your ArduinoControl object to send commands
-        self.arduino_control.send_command(Speed1)
+        self.send_command(Speed1)
         time.sleep(0.1)
-        self.arduino_control.send_command(Speed2)
+        self.send_command(Speed2)
         time.sleep(0.1)
-        self.arduino_control.send_command(Accel1)
+        self.send_command(Accel1)
         time.sleep(0.1)
-        self.arduino_control.send_command(Accel2)
+        self.send_command(Accel2)
         time.sleep(0.1)
-        self.arduino_control.send_command(Decel1)
+        self.send_command(Decel1)
         time.sleep(0.1)
-        self.arduino_control.send_command(Decel2)
+        self.send_command(Decel2)
         time.sleep(0.1)
-        self.arduino_control.send_command(Res1)
+        self.send_command(Res1)
         time.sleep(0.1)
-        self.arduino_control.send_command(Res2)
+        self.send_command(Res2)
         time.sleep(0.1)
-        self.arduino_control.send_command(enab1)
+        self.send_command(enab1)
         time.sleep(0.1)
-        self.arduino_control.send_command(enab2)
+        self.send_command(enab2)
         time.sleep(0.1)
-        self.arduino_control.send_command(prht)
+        self.send_command(prht)
         time.sleep(0.1)
-        self.arduino_control.send_command(Time)
+        self.send_command(waist_time)
+        time.sleep(0.1)
+        tension_2 = 'TEN2' + str(tension_2) + '\n'
+        tension_1 = 'TEN1' + str(tension_1) + '\n'
+        depth_val = 'DEPTH' + str(dimple_depth) + '\n'
+        Speed3 = 'SETSP_3' + str(dimple_speed) + '\n'
+        TimeD_s = 'TIME' + str(dimple_heat_time) + '\n'
+        self.send_command(tension_2)
+        time.sleep(0.1)
+        self.send_command(tension_1)
+        time.sleep(0.1)
+        self.send_command(Speed3)  # Removed encode() here
+        time.sleep(0.1)
+        self.send_command('RESHI_1\n')
+        time.sleep(0.1)
+        self.send_command('RESHI_2\n')
+        time.sleep(0.1)
+        self.send_command('RESHI_3\n')
+        time.sleep(0.1)
+        self.send_command(TimeD_s)  # Removed encode() here
+        time.sleep(0.1)
+        self.send_command(depth_val)
 
-    def decelerate(self):
-        self.arduino_control.send_command('DECEL\n')  # electrodes
-        print("Decelerating")
+class MotorControl:
+    def __init__(self, arduino_control, power_meter_control):
+        self.arduino_control = arduino_control
+        self.power_meter = power_meter_control
+        self.knife_position = True          # True if knife is up
 
-    def dimple(self, speed, depth, heat_time, tension1, tension2):
+    def reset(self):
+        time.sleep(0.1)
+        self.arduino_control.send_command('HOME\n')
+        print("Resetting")
+
+    def calibrate_knife(self):
+        if self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNIFD\n')
+            self.knife_position = False
+            print("Knife Down")
+
+        else:
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNIFU\n')
+            self.knife_position = True
+            print("Knife Up")
+
+    def calibrate_down_knife(self):
+        if not self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KNDTH\n') # Knife Down Thousand Steps
+            self.knife_position = False
+            print("Knife Down 500")
+
+    def calibrate_up_knife(self):
+        if not self.knife_position: # check if knife is down
+            time.sleep(0.1)
+            self.arduino_control.send_command('KFUTH\n') # Knife Up Thousand Steps
+            self.knife_position = False
+            print("Knife Up 500")
+
+    def move_to_home_position(self):
+        time.sleep(0.1)
+        self.arduino_control.send_command('EXIT\n')
+        print("Returning to Home Position")
+
+    def center_taper(self):
+        # Logic for centering the taper between electrodes
+        # Example: Send a command to the Arduino to center the taper
+        self.arduino_control.send_command('CENTR\n')
+        print('centering')
+
+    def dimple(self):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
-        tension_2 = 'TEN2' + str(tension2) + '\n'
-        tension_1 = 'TEN1' + str(tension1) + '\n'
-        Speed3 = 'SETSP_3' + str(speed) + '\n'
-        Depth_val = 'DIMPL' + str(depth) + '\n'
-        TimeD_s = 'TIME' + str(heat_time)+ '\n'
-        self.arduino_control.send_command(tension_2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(tension_1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Speed3)  # Removed encode() here
-        time.sleep(0.5)
-        self.arduino_control.send_command('RESHI_1\n')
-        time.sleep(0.1)
-        self.arduino_control.send_command('RESHI_2\n')
-        time.sleep(0.1)
-        self.arduino_control.send_command('RESHI_3\n')
-        time.sleep(0.1)
-        self.arduino_control.send_command(TimeD_s)  # Removed encode() here
-        time.sleep(0.1)
-        self.arduino_control.send_command(Depth_val)  # Removed encode() here
+        self.arduino_control.send_command("DIMPLE")  # Removed encode() here
         print("Dimpling")
 
-
-    def automate_dimple(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                        enab_selection, Res1_selection, Res2_selection, prht_entry, dimple_speed, dimple_depth,
-                        dimple_heat_time, tension_1, tension_2):
-
+    def automate_dimple(self):
         self.power_meter.clear_power_meter_data()
-
-        # First, initiate the tapering process
-        self.initiate_pulling(Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                              enab_selection, Res1_selection, Res2_selection, prht_entry)
-        # Wait for 8 seconds
-        time.sleep(8)
-        self.decelerate()
+        self.arduino_control.send_command('TAPERL')
 
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            if status == "Pulling Complete":
+            if status == "Tapering Complete":
                 break
             time.sleep(0.1)  # Wait for a short period before checking again
 
         self.center_taper()
-
         while True:
             status = self.arduino_control.read_from_arduino()
             if status == "Centered":
                 break
             time.sleep(1)
 
-        # self.move_motor_1(speed=50, steps=-20)
-
         # Dimple the taper
-        self.dimple(dimple_speed, dimple_depth, dimple_heat_time, tension_1, tension_2)
+        self.dimple()
         while True:
             status = self.arduino_control.read_from_arduino()
             if status == "Dimple complete":
@@ -408,104 +442,13 @@ class MotorControl:
             time.sleep(1)
         self.power_meter.save_power_meter_data()
 
+    def automate_taper(self):
 
-    def automate_taper_2(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                     enab_selection, Res1_selection, Res2_selection, prht_entry, waist_time):
-
-        self.power_meter.clear_power_meter_data()
-
-        Speed1 = 'SETSP_1' + str(Speed1_entry) + '\n'
-        Speed2 = 'SETSP_2' + str(Speed2_entry) + '\n'
-        Accel1 = 'SETAC_1' + str(Accel1_entry) + '\n'
-        Accel2 = 'SETAC_2' + str(Accel2_entry) + '\n'
-        Decel1 = 'SETDC_1' + str(Decel1_entry) + '\n'  # acquire deceleration
-        Decel2 = 'SETDC_2' + str(Decel2_entry) + '\n'
-
-        enab_val = str(enab_selection)
-        if enab_val == "Yes":
-            enab1 = 'ENABL_1\n'
-            enab2 = 'ENABL_2\n'
-            print("Enabled")
-        elif enab_val == "No":
-            enab1 = 'DISAB_1\n'
-            enab2 = 'DISAB_2\n'
-            print("Disabled")
-
-        Res1_val = str(Res1_selection)
-        Res2_val = str(Res2_selection)
-
-        if Res1_val == "High Resolution":
-            Res1 = 'RESHI_1\n'
-        elif Res1_val == "Mid Resolution":
-            Res1 = 'RESHA_1\n'
-        elif Res1_val == "Low Resolution":
-            Res1 = 'RESLO_1\n'
-
-        if Res2_val == "High Resolution":
-            Res2 = 'RESHI_2\n'
-        elif Res2_val == "Mid Resolution":
-            Res2 = 'RESHA_2\n'
-        elif Res2_val == "Low Resolution":
-            Res2 = 'RESLO_2\n'
-
-        prht = 'prht' + str(prht_entry) + '\n'
-
-        perform_taper = 'TAPERL' # This is the linear taper function
-
-        waist_time = "WAIST_T" +str(waist_time)+ '\n'
-
-        # Use your ArduinoControl object to send commands
-        self.arduino_control.send_command(Speed1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Speed2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Accel1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Accel2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Decel1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Decel2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Res1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(Res2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(enab1)
-        time.sleep(0.1)
-        self.arduino_control.send_command(enab2)
-        time.sleep(0.1)
-        self.arduino_control.send_command(prht)
-        time.sleep(0.1)
-        self.arduino_control.send_command(waist_time)
-        time.sleep(0.1)
-        self.arduino_control.send_command(perform_taper)
+        self.arduino_control.send_command("TAPERL")
 
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            print("Arduino (while loop): ", status)
             if status == "Tapering Complete":
-
-                break
-            time.sleep(0.01)  # Wait for a short period before checking again
-        self.power_meter.save_power_meter_data()
-
-    def automate_taper(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                     enab_selection, Res1_selection, Res2_selection, prht_entry):
-
-        self.power_meter.clear_power_meter_data()
-
-
-        # First, initiate the tapering process
-        self.initiate_pulling(Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
-                              enab_selection, Res1_selection, Res2_selection, prht_entry)
-        # Wait for 6 seconds
-        time.sleep(9)
-        self.decelerate()
-
-        while True:
-            status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            if status == "Pulling Complete":
                 break
             time.sleep(0.1)  # Wait for a short period before checking again
         self.power_meter.save_power_meter_data()
@@ -825,10 +768,8 @@ class SetupGUI:
     def dynamic_button_setup(self):
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Automate Dimple", font=("Arial", 10),
                                                 command=self.automate_dimple_button_pressed, pady=10)
-        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Automate Taper 1", font=("Arial", 10),
+        self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Automate Taper", font=("Arial", 10),
                                                command=self.automate_taper_button_pressed, pady=10)
-        self.Automate_taper_2_button = tk.Button(self.dynamic_button_frame, text="Automate Taper 2", font=("Arial", 10),
-                                               command=self.automate_taper_2_button_pressed, pady=10)
 
         self.Emg_button = tk.Button(self.dynamic_button_frame, text="EMERGENCY STOP", command=self.arduino_control.emergency_stop,
                                     bg="red", fg="white", activebackground="green", pady=20)
@@ -845,8 +786,6 @@ class SetupGUI:
         self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
         self.Tension_button.grid(row=3, column=0, pady=5, sticky="nsew")
         self.Fiber_broken_button.grid(row=4, column=0, pady=5, sticky="nsew")
-        self.Automate_taper_2_button.grid(row=7, column=0, pady=5, sticky="nsew")
-
         self.elec_toggle_button.grid(row=5, column=0, pady=5,  sticky="nsew")
         self.Emg_button.grid(row=6, column=0, pady=5, sticky="nsew")
 
@@ -1051,108 +990,7 @@ class SetupGUI:
         self.arduino_control.toggle_electrodes_state()
         self.update_electrode_status()
 
-    def dimple_button_pressed(self):
-        tension_1 = self.Tension_1_entry.get()
-        tension_2 = self.Tension_2_entry.get()
-        speed = self.Speed3_entry.get()
-        depth = self.Dimple_depth_entry.get()
-        time_delay = self.Heat_time_entry.get()
-        print(type(time_delay), "time delay")
-        # Check if Arduino is connected before performing dimple
-        if self.arduino_control.get_connection_status() == "Not Connected":
-            print("Error", "Arduino is not connected.")
-            return
-
-        thread = threading.Thread(target=self.motor_control.dimple, args=(
-            speed, depth, time_delay, tension_1, tension_2))
-        thread.start()
-
-    def initiate_pulling_button_pressed(self):
-        Speed1_entry = self.Speed1_entry.get()
-        Speed2_entry = self.Speed2_entry.get()
-        Accel1_entry = self.Accel1_entry.get()
-        Accel2_entry = self.Accel2_entry.get()
-        Decel1_entry = self.Decel1_entry.get()
-        Decel2_entry = self.Decel2_entry.get()
-        enab_selection = self.enab_selection.get()
-        Res1_selection = self.Res1_selection.get()
-        Res2_selection = self.Res2_selection.get()
-        prht_entry = self.prht_entry.get()
-
-        # Check if Arduino is connected before performing dimple
-        if self.arduino_control.get_connection_status() == "Not Connected":
-            print("Error", "Arduino is not connected.")
-            return
-
-        thread = threading.Thread(target=self.motor_control.initiate_pulling, args=(
-        Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry, enab_selection,
-        Res1_selection, Res2_selection, prht_entry))
-        thread.start()
-
-    def automate_dimple_button_pressed(self):
-        # begin updating the power meter
-        self.update_power_meter_plot_periodically()
-        self.update_fiber_loss_periodically()
-
-        """This function performs the entire tapering and dimpling process with the parameters found below."""
-        Speed1_entry = self.Speed1_entry.get()
-        Speed2_entry = self.Speed2_entry.get()
-        Accel1_entry = self.Accel1_entry.get()
-        Accel2_entry = self.Accel2_entry.get()
-        Decel1_entry = self.Decel1_entry.get()
-        Decel2_entry = self.Decel2_entry.get()
-        enab_selection = self.enab_selection.get()
-        Res1_selection = self.Res1_selection.get()
-        Res2_selection = self.Res2_selection.get()
-        prht_entry = self.prht_entry.get()
-
-        dimple_speed = self.Speed3_entry.get()
-        dimple_depth = self.Dimple_depth_entry.get()
-        dimple_heat_time = self.Heat_time_entry.get()
-
-        # Check if Arduino is connected before performing dimple
-        if self.arduino_control.get_connection_status() == "Not Connected":
-            print("Error", "Arduino is not connected.")
-            return
-
-
-        thread = threading.Thread(target=self.motor_control.automate_dimple, args=(Speed1_entry, Speed2_entry, Accel1_entry,
-                                    Accel2_entry, Decel1_entry, Decel2_entry, enab_selection, Res1_selection,
-                                    Res2_selection, prht_entry, dimple_speed, dimple_depth, dimple_heat_time))
-        thread.start()
-
-    def automate_taper_button_pressed(self):
-        # Update the power meter
-        self.update_power_meter_plot_periodically()
-
-
-        Speed1_entry = self.Speed1_entry.get()
-        Speed2_entry = self.Speed2_entry.get()
-        Accel1_entry = self.Accel1_entry.get()
-        Accel2_entry = self.Accel2_entry.get()
-        Decel1_entry = self.Decel1_entry.get()
-        Decel2_entry = self.Decel2_entry.get()
-        enab_selection = self.enab_selection.get()
-        Res1_selection = self.Res1_selection.get()
-        Res2_selection = self.Res2_selection.get()
-        prht_entry = self.prht_entry.get()
-
-
-        # Check if Arduino is connected before performing dimple
-        if self.arduino_control.get_connection_status() == "Not Connected":
-            print("Error", "Arduino is not connected.")
-            return
-
-        thread = threading.Thread(target=self.motor_control.automate_taper, args=(Speed1_entry, Speed2_entry, Accel1_entry,
-                                                                            Accel2_entry, Decel1_entry, Decel2_entry,
-                                                                            enab_selection, Res1_selection,
-                                                                            Res2_selection, prht_entry))
-        thread.start()
-
-    def automate_taper_2_button_pressed(self):
-        # Update the power meter
-        self.update_power_meter_plot_periodically()
-
+    def assign_gui_parameters(self):
         Speed1_entry = self.Speed1_entry.get()
         Speed2_entry = self.Speed2_entry.get()
         Accel1_entry = self.Accel1_entry.get()
@@ -1164,6 +1002,37 @@ class SetupGUI:
         Res2_selection = self.Res2_selection.get()
         prht_entry = self.prht_entry.get()
         waist_time = self.max_speed_time_entry.get()
+        dimple_speed = self.Speed3_entry.get()
+        dimple_depth = self.Dimple_depth_entry.get()
+        dimple_heat_time = self.Heat_time_entry.get()
+        tension_1 = self.Tension_1_entry.get()
+        tension_2 = self.Tension_2_entry.get()
+        self.arduino_control.assign_parameters(Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry,
+                                                Decel2_entry,enab_selection, Res1_selection, Res2_selection,
+                                                prht_entry, waist_time,  dimple_speed, dimple_depth,
+                                                dimple_heat_time, tension_1, tension_2)
+
+    def dimple_button_pressed(self):
+        self.assign_gui_parameters()
+        time.sleep(1)
+        thread = threading.Thread(target=self.motor_control.dimple, args=())
+        thread.start()
+
+    def automate_dimple_button_pressed(self):
+        self.assign_gui_parameters()
+        time.sleep(1)
+        # begin updating the power meter
+        self.update_power_meter_plot_periodically()
+        self.update_fiber_loss_periodically()
+        """This function performs the entire tapering and dimpling process with the parameters found below."""
+        thread = threading.Thread(target=self.motor_control.automate_dimple, args=())
+        thread.start()
+
+    def automate_taper_button_pressed(self):
+        self.assign_gui_parameters()
+        time.sleep(2)
+        # Update the power meter
+        self.update_power_meter_plot_periodically()
 
         print("Taper 2 Pressed")
         # Check if Arduino is connected before performing dimple
@@ -1171,11 +1040,8 @@ class SetupGUI:
             print("Error", "Arduino is not connected.")
             return
 
-        thread = threading.Thread(target=self.motor_control.automate_taper_2,
-                                  args=(Speed1_entry, Speed2_entry, Accel1_entry,
-                                        Accel2_entry, Decel1_entry, Decel2_entry,
-                                        enab_selection, Res1_selection,
-                                        Res2_selection, prht_entry, waist_time))
+        thread = threading.Thread(target=self.motor_control.automate_taper,
+                                  args=())
         thread.start()
 
     def show_camera_feed(self):
@@ -1268,3 +1134,5 @@ if __name__ == "__main__":
 
     app = SetupGUI(root, motor_control, arduino_control, power_meter, camera_control, database)
     root.mainloop()
+
+

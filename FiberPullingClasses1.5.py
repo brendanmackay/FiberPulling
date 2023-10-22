@@ -358,6 +358,7 @@ class MotorControl:
         print("Returning to Home Position")
 
     def center_taper(self):
+        time.sleep(0.1)
         # Logic for centering the taper between electrodes
         # Example: Send a command to the Arduino to center the taper
         self.arduino_control.send_command('CENTR\n')
@@ -366,15 +367,14 @@ class MotorControl:
     def dimple(self):
         # Implement the logic to dimple the taper using motor controls
         # You can use the 'speed', 'depth', and 'time_delay' parameters here
-        time.sleep(2)
+        time.sleep(0.1)
         self.arduino_control.send_command("DIMPLE")  # Removed encode() here
         print("Dimpling")
 
     def automate_dimple(self):
+
         self.power_meter.clear_power_meter_data()
-
-        time.sleep(2)
-
+        time.sleep(0.1)
         self.arduino_control.send_command('TAPERL')
 
         while True:
@@ -401,7 +401,7 @@ class MotorControl:
 
     def automate_taper(self):
 
-        time.sleep(2)
+        time.sleep(0.1)
         self.arduino_control.send_command("TAPERL")
 
         while True:
@@ -739,6 +739,11 @@ class SetupGUI:
 
         self.Fiber_broken_button = tk.Button(self.dynamic_button_frame, text ="Fiber Broken", font = ("Arial", 10),
                                              command =self.arduino_control.fiber_broken, pady=10)
+
+        self.send_parameters_button = tk.Button(self.dynamic_button_frame, text="Send GUI Parameters",
+                                                font =("Arial", 10), command=self.assign_gui_parameters, pady=10)
+
+
         # Dynamic Button Frame placement
         self.Automate_dimple_button.grid(row=1, column=0, pady=5, sticky="nsew")
         self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
@@ -746,6 +751,7 @@ class SetupGUI:
         self.Fiber_broken_button.grid(row=4, column=0, pady=5, sticky="nsew")
         self.elec_toggle_button.grid(row=5, column=0, pady=5,  sticky="nsew")
         self.Emg_button.grid(row=6, column=0, pady=5, sticky="nsew")
+        self.send_parameters_button.grid(row=7, column=0, pady=5, sticky="nsew")
 
         # Dimpling Frame Buttons
         self.Reset_button = tk.Button(self.dimpling_frame, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
@@ -949,6 +955,7 @@ class SetupGUI:
         self.update_electrode_status()
 
     def assign_gui_parameters(self):
+        print("Writing all data to Arduino")
         Speed1_entry = self.Speed1_entry.get()
         Speed2_entry = self.Speed2_entry.get()
         Accel1_entry = self.Accel1_entry.get()
@@ -972,12 +979,10 @@ class SetupGUI:
                                                 dimple_heat_time, tension_1, tension_2)
 
     def dimple_button_pressed(self):
-        self.assign_gui_parameters()
         thread = threading.Thread(target=self.motor_control.dimple, args=())
         thread.start()
 
     def automate_dimple_button_pressed(self):
-        self.assign_gui_parameters()
         # begin updating the power meter
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
@@ -986,9 +991,10 @@ class SetupGUI:
         thread.start()
 
     def automate_taper_button_pressed(self):
-        self.assign_gui_parameters()
-        # Update the power meter
+        # begin updating the power meter
         self.update_power_meter_plot_periodically()
+        self.update_fiber_loss_periodically()
+
         thread = threading.Thread(target=self.motor_control.automate_taper, args=())
         thread.start()
 
