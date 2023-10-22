@@ -472,7 +472,7 @@ class MotorControl:
                 break
             time.sleep(0.5)  # Wait for a short period before checking again
 
-class SetupGUI:
+class GUIcontrol:
     def __init__(self, root, motor_control, arduino_control, power_meter, camera_control, database):
         self.root = root
         self.root.title("Fiber Pulling App")
@@ -1086,7 +1086,7 @@ if __name__ == "__main__":
     power_meter = PowerMeterControl()
     motor_control = MotorControl(arduino_control, power_meter)
 
-    app = SetupGUI(root, motor_control, arduino_control, power_meter, camera_control, database)
+    app = GUIcontrol(root, motor_control, arduino_control, power_meter, camera_control, database)
     root.mainloop()
 
 
