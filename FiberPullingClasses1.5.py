@@ -167,9 +167,9 @@ class ArduinoControl:
         self.auto_connect()
 
         #The following code can help trouble shoot arduino issues
-        self.data_thread = threading.Thread(target=self.read_data_from_arduino)
-        self.data_thread.daemon = True  # Set as daemon so it exits when the main program exits
-        self.data_thread.start()
+        #self.data_thread = threading.Thread(target=self.read_data_from_arduino)
+        #self.data_thread.daemon = True  # Set as daemon so it exits when the main program exits
+        #self.data_thread.start()
 
     def toggle_electrodes_state(self):  # This function turns electrodes on and off
         if self.electrode_state:
@@ -229,22 +229,23 @@ class ArduinoControl:
     def assign_parameters(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
                         enab_selection, Res1_selection, Res2_selection, prht_entry, waist_time,  dimple_speed, dimple_depth,
                         dimple_heat_time, tension_1, tension_2):
+        print("Write Parameters to Arduino")
         Speed1 = 'SETSP_1' + str(Speed1_entry) + '\n'
         Speed2 = 'SETSP_2' + str(Speed2_entry) + '\n'
         Accel1 = 'SETAC_1' + str(Accel1_entry) + '\n'
         Accel2 = 'SETAC_2' + str(Accel2_entry) + '\n'
         Decel1 = 'SETDC_1' + str(Decel1_entry) + '\n'  # acquire deceleration
         Decel2 = 'SETDC_2' + str(Decel2_entry) + '\n'
+        acc_duration = 'ACCDUR' + str(int(int(Speed2_entry)/int(Accel2_entry)*1000)) + '\n'
+        dec_duration = 'DECDUR' + str(int(int(Speed2_entry)/int(Decel2_entry)*1000)) + '\n'
 
         enab_val = str(enab_selection)
         if enab_val == "Yes":
             enab1 = 'ENABL_1\n'
             enab2 = 'ENABL_2\n'
-            print("Enabled")
         elif enab_val == "No":
             enab1 = 'DISAB_1\n'
             enab2 = 'DISAB_2\n'
-            print("Disabled")
 
         Res1_val = str(Res1_selection)
         Res2_val = str(Res2_selection)
@@ -272,7 +273,6 @@ class ArduinoControl:
         depth_val = 'DEPTH' + str(dimple_depth) + '\n'
         Speed3 = 'SETSP_3' + str(dimple_speed) + '\n'
         TimeD_s = 'TIME' + str(dimple_heat_time) + '\n'
-
         # Use your ArduinoControl object to send commands
         self.send_command(Speed1)
         time.sleep(0.1)
@@ -285,6 +285,10 @@ class ArduinoControl:
         self.send_command(Decel1)
         time.sleep(0.1)
         self.send_command(Decel2)
+        time.sleep(0.1)
+        self.send_command(acc_duration)
+        time.sleep(0.1)
+        self.send_command(dec_duration)
         time.sleep(0.1)
         self.send_command(Res1)
         time.sleep(0.1)
@@ -379,7 +383,6 @@ class MotorControl:
             time.sleep(1)
         self.power_meter.save_power_meter_data()
 
-
     def taper_and_dimple(self):
 
         self.power_meter.clear_power_meter_data()
@@ -387,9 +390,10 @@ class MotorControl:
         self.arduino_control.send_command('TAPERL')
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
+            print(status)
             if status == "Tapering Complete":
                 break
-            time.sleep(0.1)  # Wait for a short period before checking again
+            time.sleep(0.01)  # Wait for a short period before checking again
         self.power_meter.save_power_meter_data()
 
         self.center_taper()
@@ -412,7 +416,6 @@ class MotorControl:
         self.power_meter.save_power_meter_data()
 
 
-
     def automate_taper(self):
 
         time.sleep(0.1)
@@ -420,6 +423,7 @@ class MotorControl:
 
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
+            print(status)
             if status == "Tapering Complete":
                 break
             time.sleep(0.1)  # Wait for a short period before checking again
@@ -510,8 +514,6 @@ class GUIcontrol:
         # Show camera feed
         self.show_camera_feed()
 
-        # Assign initial GUI parameters
-        self.assign_gui_parameters()
 
     def setup_gui(self):
         root.title('Fiber Pulling')
@@ -972,7 +974,6 @@ class GUIcontrol:
         self.update_electrode_status()
 
     def assign_gui_parameters(self):
-        print("Writing all data to Arduino")
         Speed1_entry = self.Speed1_entry.get()
         Speed2_entry = self.Speed2_entry.get()
         Accel1_entry = self.Accel1_entry.get()

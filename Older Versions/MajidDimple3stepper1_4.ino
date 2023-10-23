@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+
 //==================================================================================================
 //pin assignments for Motor 1
 const int dirPin_1 = 38; 
@@ -56,13 +57,16 @@ int start_pos_2;
 int fin_pos_2;
 
 unsigned long prht_time; //preheat time and time delay
-unsigned long waist_time = 0; // time at maximum speed during taper
 int SPD_1; //speed variables
 int SPD_2;
 int SPD_3;
 
 int ACC_1; //acceleration variables
 int ACC_2;
+
+unsigned short accel_duration = 0;
+unsigned short waist_duration = 0; // time at maximum speed during taper
+unsigned short decel_duration = 0; // maximum 30'000 milliseconds
 
 int DEC_1; //deceleration variables
 int DEC_2;
@@ -187,6 +191,14 @@ void loop() {
       int num = (state.substring(6,7).toInt()); //deceleration input
       Deceleration(num);
     }
+    else if (state.substring(0,6) == "ACCDUR") {
+      accel_duration = (state.substring(6,12)).toInt();
+      Serial.println(accel_duration);
+
+    }
+    else if (state.substring(0,6) == "DECDUR") {
+      decel_duration = (state.substring(6,12)).toInt();
+    }
         //=====================================================================================================================
     //enable motor 2
     else if (state.substring(0, 7) == "ENABL_2" ) {
@@ -230,7 +242,7 @@ void loop() {
     //===================================================================================================================
     // Time at maximum tension
     else if(state.substring(0,7) == "WAIST_T"){
-      waist_time = (state.substring(7,12)).toInt();
+      waist_duration = (state.substring(7,12)).toInt();
     }
 
     //=====================================================================================================================
@@ -306,67 +318,37 @@ void loop() {
       }
 
       //============================================================================================================
-      //run motor to taper
-      else if (state.substring(0, 2) == "GO" ) {
-    
-        myStepper_2.move(-200000);
-        myStepper_1.move(200000);
-
-        digitalWrite(RelayPin, HIGH);
-        delay(prht_time); 
-
-        start_pos_2 = myStepper_2.currentPosition();
-        while (myStepper_2.distanceToGo() != 0) { 
-          
-          myStepper_2.run();
-          myStepper_1.run();
-          
-          new_string();
-        }
-        digitalWrite(RelayPin, LOW);
-        Serial.println("Pulling Complete");
-        fin_pos_1 = myStepper_1.currentPosition();
-        fin_pos_2 = myStepper_2.currentPosition();
-    
-      }
-
+      //run motor to taper with linear profile
 else if (state.substring(0, 6) == "TAPERL"){
-    
         myStepper_2.move(-200000);
         myStepper_1.move(200000);
 
         digitalWrite(RelayPin, HIGH);
         delay(prht_time); 
 
-        unsigned long startTime = millis();
-        const unsigned long accel_duration = int(SPD_2/ACC_2*1000); // example: 5 seconds
-        const unsigned long hold_duration = waist_time;
-        const unsigned long decel_duration = int(SPD_2/DEC_2*1000); // example: 5 seconds
         bool stop = false;
-
+        unsigned long startTime = millis();
         start_pos_1 = myStepper_1.currentPosition();
         start_pos_2 = myStepper_2.currentPosition();
-        while (millis() - startTime < decel_duration+accel_duration+hold_duration) {
+        while (myStepper_2.distanceToGo() != 0) {
           myStepper_2.run();
           myStepper_1.run();
           new_string();
-        if (millis() - startTime > accel_duration + hold_duration && !stop) {
-            stop = true;
-            myStepper_1.stop();
-            myStepper_2.stop();
-        }
+          if (millis() - startTime > accel_duration + waist_duration && !stop) {
+              Serial.println("Stop");
+              stop = true;
+              myStepper_1.stop();
+              myStepper_2.stop();
+          }
 
-            
         }
+        Serial.println("Stopped");
         digitalWrite(RelayPin, LOW);
         Serial.println("Tapering Complete");
+
         fin_pos_1 = myStepper_1.currentPosition();
         fin_pos_2 = myStepper_2.currentPosition();
 
-      }
-
-      else if (state.substring(0,6) == "TAPERB"){
-      // Non linear acceleration for tapered fiber using bezier curves
       }
       
       //=====================================================================================================================
@@ -697,19 +679,16 @@ void Speed(int num){ //speed commands
   Serial.println(num);
   if (num == 1){
     SPD_1 = (state.substring(7,12).toInt());
-    //myStepper_1.setMaxSpeed(SPD_1);
     myStepper_1.setSpeed(SPD_1);
   }
   else if (num == 2){
     SPD_2 = (state.substring(7,12).toInt());
     //myStepper_2.setMaxSpeed(SPD_2);
-    myStepper_2.setMaxSpeed(SPD_2);
+    myStepper_2.setSpeed(SPD_2);
   }
   else if (num == 3){
     SPD_3 = (state.substring(7, 12)).toInt();
-    SPD_1 = SPD_3/2;
-    SPD_2 = SPD_3/2;
-    //myStepper_3.setMaxSpeed(SPD_3);
+
     myStepper_3.setSpeed(SPD_3);
   }    
 }
