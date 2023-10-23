@@ -56,6 +56,23 @@ class Database:
         self.data["profiles"].append(profile)
         self.save_data()
 
+    def delete_profile(self, profile_name):
+        # Find the profile with the given name
+        profile_to_delete = None
+        for profile in self.data["profiles"]:
+            if profile.get("name") == profile_name:
+                profile_to_delete = profile
+                break
+
+        if profile_to_delete:
+            # Remove the profile from the list
+            self.data["profiles"].remove(profile_to_delete)
+
+            # Save the updated data
+            self.save_data()
+            return True  # Deletion successful
+        else:
+            return False  # Profile not found or deletion failed
     def save_data(self):
         with open(self.filename, 'w') as file:
             json.dump(self.data, file, indent=4)
@@ -390,7 +407,6 @@ class MotorControl:
         self.arduino_control.send_command('TAPERL')
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            print(status)
             if status == "Tapering Complete":
                 break
             time.sleep(0.01)  # Wait for a short period before checking again
@@ -863,6 +879,9 @@ class GUIcontrol:
         # Load profiles from the database and populate the listbox
         self.load_profiles()
 
+        self.profile_name_entry = tk.Entry(self.profile_frame, width=10, font=("Arial", 10))
+        self.profile_name_entry.grid( row=1, column=2)
+
         # Buttons for profile management
         self.load_button = tk.Button(self.profile_frame, text="Load Profile", command=self.load_selected_profile)
         self.load_button.grid(row=0, column=1, padx=10, pady=5)
@@ -870,7 +889,7 @@ class GUIcontrol:
         self.add_button = tk.Button(self.profile_frame, text="Add Profile", command=self.add_profile)
         self.add_button.grid(row=1, column=1, padx=10, pady=5)
 
-        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_profile)
+        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_selected_profile)
         self.delete_button.grid(row=2, column=1, padx=10, pady=5)
 
         # Load the last used profile on startup
@@ -943,20 +962,58 @@ class GUIcontrol:
             self.Tension_2_entry.insert(0, selected_profile["tension_steps"][1])
 
     def add_profile(self):
-        # Implement a dialog to add a new profile with parameters and store it in the database
-        # After adding, call load_profiles to refresh the listbox
-        print("Initiate Code Here")
-        pass
 
-    def delete_profile(self):
-        # Get the selected profile name from the listbox
-        selected_index = self.profile_listbox.curselection()
-        if selected_index:
-            selected_index = selected_index[0]
-            selected_profile_name = self.profile_listbox.get(selected_index)
+        # Collect data from entry boxes
+        profile_name = self.profile_name_entry.get()
+        if profile_name == "":
+            print("Enter a name")
+            return
+        print("Adding profile")
+        motor_speeds = [int(self.Speed1_entry.get()), int(self.Speed2_entry.get()), int(self.Speed3_entry.get())]
+        motor_accelerations = [int(self.Accel1_entry.get()), int(self.Accel2_entry.get()), 0]  # Assuming 0 for now
+        motor_decelerations = [int(self.Decel1_entry.get()), int(self.Decel2_entry.get()), 0]  # Assuming 0 for now
+        max_speed_time = float(self.max_speed_time_entry.get())
+        preheat_time = float(self.prht_entry.get())
+        dimple_depth = int(self.Dimple_depth_entry.get())
+        dimple_heat_time = float(self.Heat_time_entry.get())
+        motor_resolution = [self.Res1_selection.get(), self.Res2_selection.get(), "low"]  # Assuming "low" for now
+        tension_steps = [float(self.Tension_1_entry.get()), float(self.Tension_2_entry.get())]  # Assuming 0.0 for now
 
-            # Implement logic to delete the selected profile from the database
-            # After deleting, call load_profiles to refresh the listbox
+        # Create a profile dictionary with the collected data
+        new_profile = {
+            "name": profile_name,
+            "motor_speeds": motor_speeds,
+            "motor_accelerations": motor_accelerations,
+            "motor_decelerations": motor_decelerations,
+            "max_speed_time": max_speed_time,
+            "preheat_time": preheat_time,
+            "dimple_depth": dimple_depth,
+            "dimple_heat_time": dimple_heat_time,
+            "motor_resolution": motor_resolution,
+            "knife_calibration_height": 87900,
+            "tension_steps": tension_steps
+        }
+
+        # Add the new profile to the database
+        self.database.add_profile(new_profile)
+
+        # Optionally, refresh the listbox displaying profiles
+        self.load_profiles()
+
+    def delete_selected_profile(self):
+        # Get the selected profile name from your listbox or other widget
+        selected_profile = self.profile_listbox.get(tk.ACTIVE)
+
+        # Call the delete_profile function from the Database object
+        deletion_result = self.database.delete_profile(selected_profile)
+
+        # Check if the deletion was successful
+        if deletion_result:
+            print(f"Profile '{selected_profile}' deleted successfully.")
+            # Refresh your list of profiles in the GUI if needed
+            self.load_profiles()
+        else:
+            print(f"Profile '{selected_profile}' not found or deletion failed.")
 
     def update_electrode_status(self):
         state = self.arduino_control.electrode_state

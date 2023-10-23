@@ -33,37 +33,69 @@
             ]
         },
         {
-            "name": "Profile 1",
+            "name": "Profile 2",
             "motor_speeds": [
-                0,
-                0,
-                0
+                38,
+                930,
+                1000
             ],
             "motor_accelerations": [
-                0,
-                0,
+                6,
+                80,
                 0
             ],
             "motor_decelerations": [
-                0,
-                0,
+                6,
+                80,
                 0
             ],
-            "max_speed_time": 0,
-            "preheat_time": 0,
-            "dimple_depth": 0,
-            "dimple_heat_time": 0,
+            "max_speed_time": 5000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 20,
+            "dimple_heat_time": 1000.0,
             "motor_resolution": [
-                "high",
-                "mid",
+                "High Resolution",
+                "Mid Resolution",
                 "low"
             ],
             "knife_calibration_height": 87900,
             "tension_steps": [
-                0,
+                5.0,
+                5.0
+            ]
+        },
+        {
+            "name": "Profile 3",
+            "motor_speeds": [
+                38,
+                1000,
+                1000
+            ],
+            "motor_accelerations": [
+                6,
+                80,
                 0
+            ],
+            "motor_decelerations": [
+                6,
+                80,
+                0
+            ],
+            "max_speed_time": 5000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 20,
+            "dimple_heat_time": 1000.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
             ]
         }
     ],
-    "last_used_profile": "Kayla Profile"
+    "last_used_profile": "Profile 3"
 }
