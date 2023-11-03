@@ -243,7 +243,7 @@ class ArduinoControl:
         else:
             return False
 
-    def assign_parameters(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry, Decel1_entry, Decel2_entry,
+    def assign_parameters(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry,
                         enab_selection, Res1_selection, Res2_selection, prht_entry, waist_time,  dimple_speed, dimple_depth,
                         dimple_heat_time, tension_1, tension_2):
         print("Write Parameters to Arduino")
@@ -251,12 +251,14 @@ class ArduinoControl:
         Speed2 = 'SETSP_2' + str(Speed2_entry) + '\n'
         Accel1 = 'SETAC_1' + str(Accel1_entry) + '\n'
         Accel2 = 'SETAC_2' + str(Accel2_entry) + '\n'
-        Decel1 = 'SETDC_1' + str(Decel1_entry) + '\n'  # acquire deceleration
-        Decel2 = 'SETDC_2' + str(Decel2_entry) + '\n'
+        # Calculate accel duration and taper steps (linear symmetrical acceleration profile)
         acc_duration = 'ACCDUR' + str(int(int(Speed2_entry)/int(Accel2_entry)*1000)) + '\n'
-        dec_duration = 'DECDUR' + str(int(int(Speed2_entry)/int(Decel2_entry)*1000)) + '\n'
+        taper_steps = 'TAPSTP' + str(int(2*int(Speed2_entry)**2/int(Accel2_entry))) + '\n'
+        print(taper_steps)
 
         enab_val = str(enab_selection)
+        enab1 = ''
+        enab2=''
         if enab_val == "Yes":
             enab1 = 'ENABL_1\n'
             enab2 = 'ENABL_2\n'
@@ -267,6 +269,8 @@ class ArduinoControl:
         Res1_val = str(Res1_selection)
         Res2_val = str(Res2_selection)
 
+        Res1 = ''
+        Res2 = ''
         if Res1_val == "High Resolution":
             Res1 = 'RESHI_1\n'
         elif Res1_val == "Mid Resolution":
@@ -299,13 +303,9 @@ class ArduinoControl:
         time.sleep(0.1)
         self.send_command(Accel2)
         time.sleep(0.1)
-        self.send_command(Decel1)
-        time.sleep(0.1)
-        self.send_command(Decel2)
-        time.sleep(0.1)
         self.send_command(acc_duration)
         time.sleep(0.1)
-        self.send_command(dec_duration)
+        self.send_command(taper_steps)
         time.sleep(0.1)
         self.send_command(Res1)
         time.sleep(0.1)
@@ -384,6 +384,13 @@ class MotorControl:
         # Example: Send a command to the Arduino to center the taper
         self.arduino_control.send_command('CENTR\n')
         print('centering')
+        while True:
+            status = self.arduino_control.read_from_arduino()
+            print(status)
+            if status == "Centered":
+                break
+            time.sleep(1)
+        print("woot woot")
 
     def dimple(self):
         # Implement the logic to dimple the taper using motor controls
@@ -555,13 +562,13 @@ class GUIcontrol:
 
         # Create three vertical sub frames
         column_frame_1 = tk.Frame(main_frame)
-        column_frame_1.grid(row=1, column=0, sticky="nsew")
+        column_frame_1.grid(row=1, column=0, sticky="nsew", padx=5)
 
         column_frame_2 = tk.Frame(main_frame)
-        column_frame_2.grid(row=1, column=1, sticky="nsew")
+        column_frame_2.grid(row=1, column=1, sticky="nsew", padx=5)
 
         column_frame_3 = tk.Frame(main_frame)
-        column_frame_3.grid(row=1, column=2, sticky="nsew")
+        column_frame_3.grid(row=1, column=2, sticky="nsew", padx=5)
 
 
         # Create subframes in the first column frame
@@ -639,20 +646,10 @@ class GUIcontrol:
         Accel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
 
-        # deceleration 1 labels and entry widgets
-        Decel1_label = tk.Label(self.tapering_frame, text="Deceleration Motor 1: ", font=("Arial", 10))
-        Decel1_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.Decel1_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-
         # Acceleration 1 labels and entry widgets
         Accel2_label = tk.Label(self.tapering_frame, text="Acceleration Motor 2: ", font=("Arial", 10))
         Accel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
         self.Accel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
-
-        # deceleration 1 labels and entry widgets
-        Decel2_label = tk.Label(self.tapering_frame, text="Deceleration Motor 2: ", font=("Arial", 10))
-        Decel2_units = tk.Label(self.tapering_frame, text="Steps/s\u00b2", font=("Arial", 10))
-        self.Decel2_entry = tk.Entry(self.tapering_frame, width=6, font=("Arial", 10))
 
         # preheat labels and entry widgets
         prht_label = tk.Label(self.tapering_frame, text="Preheat time:", font=("Arial", 10))
@@ -692,21 +689,13 @@ class GUIcontrol:
         Accel2_units.grid(row=4, column=2)
         self.Accel2_entry.grid(row=4, column=1, pady=2)
 
-        Decel1_label.grid(row=5, column=0, pady=2)  # Deceleration 1 widget placements
-        Decel1_units.grid(row=5, column=2)
-        self.Decel1_entry.grid(row=5, column=1, pady=2)
+        prht_label.grid(row=5, column=0, pady=2)  # preheat widgets placements
+        self.prht_entry.grid(row=5, column=1, pady=2)
+        prht_units.grid(row=5, column=2, pady=2)
 
-        Decel2_label.grid(row=6, column=0, pady=2)  # Acceleration 2 widget placements
-        Decel2_units.grid(row=6, column=2)
-        self.Decel2_entry.grid(row=6, column=1, pady=2)
-
-        prht_label.grid(row=7, column=0, pady=2)  # preheat widgets placements
-        self.prht_entry.grid(row=7, column=1, pady=2)
-        prht_units.grid(row=7, column=2, pady=2)
-
-        max_speed_time.grid(row=8, column=0, pady=2)  # preheat widgets placements
-        self.max_speed_time_entry.grid(row=8, column=1, pady=2)
-        max_speed_time_units.grid(row=8, column=2, pady=2)
+        max_speed_time.grid(row=6, column=0, pady=2)  # preheat widgets placements
+        self.max_speed_time_entry.grid(row=6, column=1, pady=2)
+        max_speed_time_units.grid(row=6, column=2, pady=2)
 
     def dimpling_setup(self):
         # ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -791,7 +780,7 @@ class GUIcontrol:
         # Dimpling Frame Buttons
         self.Reset_button = tk.Button(self.dimpling_frame, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
                                       , padx=10, pady=2)
-        self.Center_button = tk.Button(self.dimpling_frame, text="Center", command=self.motor_control.center_taper,
+        self.Center_button = tk.Button(self.dimpling_frame, text="Center", command=self.center_button_pressed,
                                        font=("Arial", 10), padx=10, pady=2)
         self.Dimple_button = tk.Button(self.dimpling_frame, text="Dimple", font=("Arial", 10),
                                        command=self.dimple_button_pressed, padx=10, pady=2)
@@ -937,12 +926,6 @@ class GUIcontrol:
             self.Accel2_entry.delete(0, tk.END)
             self.Accel2_entry.insert(0, selected_profile["motor_accelerations"][1])
             # Repeat this for other Entry widgets and parameters
-            self.Decel1_entry.delete(0, tk.END)
-            self.Decel1_entry.insert(0, selected_profile["motor_decelerations"][0])
-            # Repeat this for other Entry widgets and parameters
-            self.Decel2_entry.delete(0, tk.END)
-            self.Decel2_entry.insert(0, selected_profile["motor_decelerations"][1])
-            # Repeat this for other Entry widgets and parameters
             self.max_speed_time_entry.delete(0, tk.END)
             self.max_speed_time_entry.insert(0, selected_profile["max_speed_time"])
             # Repeat this for other Entry widgets and parameters
@@ -971,7 +954,6 @@ class GUIcontrol:
         print("Adding profile")
         motor_speeds = [int(self.Speed1_entry.get()), int(self.Speed2_entry.get()), int(self.Speed3_entry.get())]
         motor_accelerations = [int(self.Accel1_entry.get()), int(self.Accel2_entry.get()), 0]  # Assuming 0 for now
-        motor_decelerations = [int(self.Decel1_entry.get()), int(self.Decel2_entry.get()), 0]  # Assuming 0 for now
         max_speed_time = float(self.max_speed_time_entry.get())
         preheat_time = float(self.prht_entry.get())
         dimple_depth = int(self.Dimple_depth_entry.get())
@@ -984,7 +966,6 @@ class GUIcontrol:
             "name": profile_name,
             "motor_speeds": motor_speeds,
             "motor_accelerations": motor_accelerations,
-            "motor_decelerations": motor_decelerations,
             "max_speed_time": max_speed_time,
             "preheat_time": preheat_time,
             "dimple_depth": dimple_depth,
@@ -1035,8 +1016,6 @@ class GUIcontrol:
         Speed2_entry = self.Speed2_entry.get()
         Accel1_entry = self.Accel1_entry.get()
         Accel2_entry = self.Accel2_entry.get()
-        Decel1_entry = self.Decel1_entry.get()
-        Decel2_entry = self.Decel2_entry.get()
         enab_selection = self.enab_selection.get()
         Res1_selection = self.Res1_selection.get()
         Res2_selection = self.Res2_selection.get()
@@ -1048,8 +1027,7 @@ class GUIcontrol:
         tension_1 = self.Tension_1_entry.get()
         tension_2 = self.Tension_2_entry.get()
         self.arduino_control.assign_parameters(Speed1_entry, Speed2_entry,
-                                                Accel1_entry, Accel2_entry, Decel1_entry,
-                                                Decel2_entry,enab_selection, Res1_selection, Res2_selection,
+                                                Accel1_entry, Accel2_entry,enab_selection, Res1_selection, Res2_selection,
                                                 prht_entry, waist_time,  dimple_speed, dimple_depth,
                                                 dimple_heat_time, tension_1, tension_2)
 
@@ -1058,6 +1036,10 @@ class GUIcontrol:
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
         thread = threading.Thread(target=self.motor_control.dimple, args=())
+        thread.start()
+
+    def center_button_pressed(self):
+        thread = threading.Thread(target=self.motor_control.center_taper, args=())
         thread.start()
 
     def taper_dimple_button_pressed(self):
