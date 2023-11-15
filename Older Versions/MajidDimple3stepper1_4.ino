@@ -79,7 +79,9 @@ int home1; //home positions to return to
 int home2;
 int home3;
 
-int Depth;
+int taper_steps;
+
+int depth;
 
 bool fiberBroken = false;
 //===================================================================================================
@@ -185,20 +187,20 @@ void loop() {
       int num = (state.substring(6,7)).toInt(); //acceleration input
       Acceleration(num);
     }
-        //=====================================================================================================================
-    //set deceleration of motor 1
-    else if (state.substring(0, 5) == "SETDC" ) {
-      int num = (state.substring(6,7).toInt()); //deceleration input
-      Deceleration(num);
-    }
+
+    //=====================================================================================================================
     else if (state.substring(0,6) == "ACCDUR") {
       accel_duration = (state.substring(6,12)).toInt();
       Serial.println(accel_duration);
+    }
+
+    //=====================================================================================================================
+    else if (state.substring(0,6) == "TAPSTP") {
+      taper_steps = (state.substring(6,12)).toInt();
+      Serial.println(taper_steps);
 
     }
-    else if (state.substring(0,6) == "DECDUR") {
-      decel_duration = (state.substring(6,12)).toInt();
-    }
+
         //=====================================================================================================================
     //enable motor 2
     else if (state.substring(0, 7) == "ENABL_2" ) {
@@ -227,7 +229,7 @@ void loop() {
       TimeD = (state.substring(4,12)).toInt();
     }
     else if(state.substring(0,5) == "DEPTH"){
-        int Depth = (state.substring(5, 12)).toInt();
+        int depth = (state.substring(5, 12)).toInt();
     }
     //====================================================================================================================
     //Tension for motor 1 during dimpling
@@ -385,9 +387,9 @@ else if (state.substring(0, 6) == "TAPERL"){
       //=====================================================================================================================
       //Move the taper to the electrodes
 
-      else if (state.substring(0,5) == "CENTR"){  
-        float targ_pos_2 = (fin_pos_2 + start_pos_2)/2; //calculate center positions
-        float targ_pos_1 = (fin_pos_1 + (fin_pos_2 + start_pos_2)/2);
+      else if (state.substring(0,5) == "CENTR"){
+        float targ_pos_2 = (fin_pos_2+taper_steps/2); //calculate center positions
+        float targ_pos_1 = (fin_pos_1-taper_steps/2);
 
         Resolution(1,"HA"); //set to same resolution
         delay(500);
@@ -432,16 +434,12 @@ else if (state.substring(0, 6) == "TAPERL"){
 
         home3 = myStepper_3.currentPosition(); //set home position
 
-        // DIM_P = 44300; //depth for knife to run with old knife arm
-        DIM_P = 87900;
+        DIM_P = 86000;
 
         myStepper_3.moveTo(DIM_P);// set move value
 
         myStepper_2.setMaxSpeed(SPD_2); // speed for motors 1 and 2
         myStepper_1.setMaxSpeed(SPD_1);
-        Serial.println(Depth); 
-        Serial.println(DIM_P);
-        Serial.println(myStepper_3.distanceToGo());
         while(myStepper_3.distanceToGo()!=0){ //execute commands
           myStepper_3.run();
           new_string();
@@ -450,8 +448,7 @@ else if (state.substring(0, 6) == "TAPERL"){
         myStepper_3.setAcceleration(100);
         myStepper_1.move(TEN_1);//Motors 1 and 2 move towards each other to lessen the tension
         myStepper_2.move(TEN_2);
-        myStepper_3.moveTo(DIM_P+Depth);
-
+        myStepper_3.moveTo(DIM_P+depth);
         while (myStepper_3.distanceToGo() != 0 || myStepper_1.distanceToGo() != 0 || myStepper_2.distanceToGo() != 0) {
           if (myStepper_3.distanceToGo() != 0) {
             myStepper_3.run();
@@ -495,8 +492,7 @@ else if (state.substring(0, 6) == "TAPERL"){
         myStepper_3.setAcceleration(3000); //set accelerations
 
         home3 = myStepper_3.currentPosition(); //set home position
-        // DIM_P = 44300; //depth for knife to run with old knife arm
-        DIM_P = 87900;
+        DIM_P = 86000;
         myStepper_3.moveTo(DIM_P);// set move value
 
         Serial.println(DIM_P);
@@ -705,17 +701,3 @@ void Acceleration(int num){ //set acceleration of motors 1 and 2
   }
 }
 
-void Deceleration(int num){ //set deceleration
-  if (num == 1){
-    DEC_1 = (state.substring(7,12).toInt());
-    if (DEC_1 == 0){
-      DEC_1 = 20000;
-    }
-  }
-  else if (num == 2){
-    DEC_2 = (state.substring(7,12).toInt());
-    if (DEC_2 == 0){
-      DEC_2 = 20000;
-    }
-  }
-}
