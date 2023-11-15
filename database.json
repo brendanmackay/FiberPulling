@@ -65,7 +65,7 @@
             ]
         },
         {
-            "name": "80 Accel",
+            "name": "80 Accel #1",
             "motor_speeds": [
                 60,
                 800,
@@ -76,9 +76,58 @@
                 80,
                 0
             ],
-            "motor_decelerations": [
+            "max_speed_time": 2000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 15,
+            "dimple_heat_time": 500.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
+        },
+        {
+            "name": "80 Accel #2",
+            "motor_speeds": [
+                60,
+                900,
+                1000
+            ],
+            "motor_accelerations": [
                 6,
-                160,
+                80,
+                0
+            ],
+            "max_speed_time": 0.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 15,
+            "dimple_heat_time": 500.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
+        },
+        {
+            "name": "60 Accel #1",
+            "motor_speeds": [
+                70,
+                1000,
+                1000
+            ],
+            "motor_accelerations": [
+                7,
+                60,
                 0
             ],
             "max_speed_time": 2000.0,
@@ -97,5 +146,5 @@
             ]
         }
     ],
-    "last_used_profile": "80 Accel"
+    "last_used_profile": "160 accel"
 }
