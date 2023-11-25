@@ -398,7 +398,7 @@ class MotorControl:
 
         self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
-        self.arduino_control.send_command("DIMPLE")  # Removed encode() here
+        self.arduino_control.send_command("DIMPLE\n")  # Removed encode() here
         print("Dimpling")
         while True:
             status = self.arduino_control.read_from_arduino()
@@ -411,7 +411,7 @@ class MotorControl:
 
         self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
-        self.arduino_control.send_command('TAPERL')
+        self.arduino_control.send_command('TAPER\n')
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
             if status == "Tapering Complete":
@@ -429,7 +429,7 @@ class MotorControl:
         # Dimple the taper
         self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
-        self.arduino_control.send_command("DIMPLE")  # Removed encode() here
+        self.arduino_control.send_command("DIMPLE\n")  # Removed encode() here
         print("Dimpling")
         while True:
             status = self.arduino_control.read_from_arduino()
@@ -439,14 +439,24 @@ class MotorControl:
         self.power_meter.save_power_meter_data()
 
 
+    def automate_taper_bezier(self):
+        time.sleep(0.1)
+        self.arduino_control.send_command("TAPERB\n")
+        print("Bezier Taper")
+        while True:
+            status = self.arduino_control.read_from_arduino()  # assuming you have such a method
+            if status == "Tapering Complete":
+                break
+            time.sleep(0.1)  # Wait for a short period before checking again
+        self.power_meter.save_power_meter_data()
+
     def automate_taper(self):
 
         time.sleep(0.1)
-        self.arduino_control.send_command("TAPERL")
-
+        self.arduino_control.send_command("TAPER\n")
+        print("Bezier Taper")
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            print(status)
             if status == "Tapering Complete":
                 break
             time.sleep(0.1)  # Wait for a short period before checking again
@@ -748,6 +758,8 @@ class GUIcontrol:
         self.Tension_2_entry.grid(row=5, column=1, pady=2)
 
     def dynamic_button_setup(self):
+        self.Automate_taper_bezier_button = tk.Button(self.dynamic_button_frame, text="Taper Bezier", font=("Arial", 10),
+                                                command=self.taper_bezier_button_pressed, pady=10)
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Taper & Dimple", font=("Arial", 10),
                                                 command=self.taper_dimple_button_pressed, pady=10)
         self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Taper", font=("Arial", 10),
@@ -769,6 +781,7 @@ class GUIcontrol:
 
 
         # Dynamic Button Frame placement
+        self.Automate_taper_bezier_button.grid(row=0, column=0, pady=5, sticky="nsew")
         self.Automate_dimple_button.grid(row=1, column=0, pady=5, sticky="nsew")
         self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
         self.Tension_button.grid(row=3, column=0, pady=5, sticky="nsew")
@@ -1031,6 +1044,9 @@ class GUIcontrol:
                                                 prht_entry, waist_time,  dimple_speed, dimple_depth,
                                                 dimple_heat_time, tension_1, tension_2)
 
+
+
+
     def dimple_button_pressed(self):
         # begin updating the power meter
         self.update_power_meter_plot_periodically()
@@ -1047,6 +1063,13 @@ class GUIcontrol:
         self.update_power_meter_plot_periodically()
         self.update_fiber_loss_periodically()
         thread = threading.Thread(target=self.motor_control.taper_and_dimple, args=())
+        thread.start()
+
+    def taper_bezier_button_pressed(self):
+        # begin updating the power meter
+        self.update_power_meter_plot_periodically()
+        self.update_fiber_loss_periodically()
+        thread = threading.Thread(target=self.motor_control.automate_taper_bezier, args=())
         thread.start()
 
     def automate_taper_button_pressed(self):
