@@ -144,7 +144,88 @@
                 5.0,
                 5.0
             ]
+        },
+        {
+            "name": "80 accel #3",
+            "motor_speeds": [
+                30,
+                800,
+                1000
+            ],
+            "motor_accelerations": [
+                6,
+                80,
+                0
+            ],
+            "max_speed_time": 2000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 15,
+            "dimple_heat_time": 500.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
+        },
+        {
+            "name": "160 Accel #2",
+            "motor_speeds": [
+                38,
+                900,
+                1000
+            ],
+            "motor_accelerations": [
+                6,
+                160,
+                0
+            ],
+            "max_speed_time": 1000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 20,
+            "dimple_heat_time": 1000.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
+        },
+        {
+            "name": "200 Accel #1",
+            "motor_speeds": [
+                38,
+                900,
+                1000
+            ],
+            "motor_accelerations": [
+                6,
+                200,
+                0
+            ],
+            "max_speed_time": 1000.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 20,
+            "dimple_heat_time": 1000.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
         }
     ],
-    "last_used_profile": "160 accel"
+    "last_used_profile": "160 Accel #2"
 }
