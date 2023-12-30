@@ -43,7 +43,7 @@ class Database:
             with open(self.filename, 'r') as file:
                 data = json.load(file)
             return data
-        except FileNotFoundError:
+        except (FileNotFoundError, json.JSONDecodeError):
             # Handle the case when the file doesn't exist or is empty
             return {"profiles": []}
 
@@ -874,11 +874,11 @@ class GUIcontrol:
         dimpling_label.grid(row=0, column=0, columnspan=2)
 
         # Create a listbox to display profiles
-        self.profile_listbox = tk.Listbox(self.profile_frame, width=30, height=5, selectmode=tk.SINGLE)
-        self.profile_listbox.grid(row=3, column=0, rowspan=3, columnspan=2)
+        self.linear_listbox = tk.Listbox(self.profile_frame, width=30, height=5, selectmode=tk.SINGLE)
+        self.linear_listbox.grid(row=3, column=0, rowspan=3, columnspan=2)
 
         # Load profiles from the database and populate the listbox
-        self.load_lin_profiles()
+        self.load_profiles(self.database_lin, self.linear_listbox)
 
         self.profile_name_entry = tk.Entry(self.profile_frame, width=10, font=("Arial", 10))
         self.profile_name_entry.grid(row=1, column=1)
@@ -890,7 +890,7 @@ class GUIcontrol:
         self.add_button = tk.Button(self.profile_frame, text="Add Profile", command=self.add_profile)
         self.add_button.grid(row=1, column=0, pady=5)
 
-        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_selected_profile)
+        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_lin_profile)
         self.delete_button.grid(row=2, column=1, pady=5)
 
         # Load the last used profile on startup
@@ -907,37 +907,28 @@ class GUIcontrol:
         self.bezier_listbox = tk.Listbox(self.profile_frame, width=30, height=5, selectmode=tk.SINGLE)
         self.bezier_listbox.grid(row=3, column=3, rowspan=3, columnspan=2)
 
-        # Load profiles from the database and populate the listbox
-        self.load_bez_profiles()
+        # To load Bezier profiles
+        self.load_profiles(self.database_bez, self.bezier_listbox)
 
         self.new_button = tk.Button(self.profile_frame, text="Create New Profile", width=15, command=self.open_bezier_window)
         self.new_button.grid(row=1, column=3, pady=5, columnspan=2)
 
-        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", width=15,  command=self.delete_selected_profile)
+        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", width=15, command=self.delete_bez_profile)
         self.delete_button.grid(row=2, column=3, pady=5, columnspan=2)
 
-    def load_lin_profiles(self):
+    def load_profiles(self, database, listbox):
         # Clear the listbox
-        self.profile_listbox.delete(0, tk.END)
+        listbox.delete(0, tk.END)
 
-        # Get all profiles from the database and add them to the listbox
-        profiles = self.database_lin.get_all_profiles()
+        # Get all profiles from the specified database and add them to the listbox
+        profiles = database.get_all_profiles()
         for profile in profiles:
-            self.profile_listbox.insert(tk.END, profile["name"])
-
-    def load_bez_profiles(self):
-        # Clear the listbox
-        self.bezier_listbox.delete(0, tk.END)
-
-        # Get all profiles from the database and add them to the listbox
-        profiles = self.database_bez.get_all_profiles()
-        for profile in profiles:
-            self.bezier_listbox.insert(tk.END, profile["name"])
+            listbox.insert(tk.END, profile["name"])
 
     def load_selected_profile(self, profile_name=None):
         if profile_name is None:
             # Get the selected profile name from the listbox
-            selected_profile_name = self.profile_listbox.get(tk.ACTIVE)
+            selected_profile_name = self.linear_listbox.get(tk.ACTIVE)
         else:
             selected_profile_name = profile_name
 
@@ -1017,12 +1008,12 @@ class GUIcontrol:
         # Add the new profile to the database
         self.database_lin.add_profile(new_profile)
 
-        # Optionally, refresh the listbox displaying profiles
-        self.load_lin_profiles()
+        # To load linear profiles
+        self.load_profiles(self.database_lin, self.linear_listbox)
 
-    def delete_selected_profile(self):
+    def delete_lin_profile(self):
         # Get the selected profile name from your listbox or other widget
-        selected_profile = self.profile_listbox.get(tk.ACTIVE)
+        selected_profile = self.linear_listbox.get(tk.ACTIVE)
 
         # Call the delete_profile function from the Database object
         deletion_result = self.database_lin.delete_profile(selected_profile)
@@ -1031,7 +1022,24 @@ class GUIcontrol:
         if deletion_result:
             print(f"Profile '{selected_profile}' deleted successfully.")
             # Refresh your list of profiles in the GUI if needed
-            self.load_lin_profiles()
+            # To load linear profiles
+            self.load_profiles(self.database_lin, self.linear_listbox)
+        else:
+            print(f"Profile '{selected_profile}' not found or deletion failed.")
+
+    def delete_bez_profile(self):
+        # Get the selected profile name from your listbox or other widget
+        selected_profile = self.bezier_listbox.get(tk.ACTIVE)
+
+        # Call the delete_profile function from the Database object
+        deletion_result = self.database_bez.delete_profile(selected_profile)
+
+        # Check if the deletion was successful
+        if deletion_result:
+            print(f"Profile '{selected_profile}' deleted successfully.")
+            # Refresh your list of profiles in the GUI if needed
+            # To load linear profiles
+            self.load_profiles(self.database_bez, self.bezier_listbox)
         else:
             print(f"Profile '{selected_profile}' not found or deletion failed.")
 
@@ -1573,17 +1581,22 @@ class BezierCurveApp:
                                 angle=90, text="Velocity (Step/s)", font=("Arial", 20, "bold"))
 
     def save_profile(self):
-        # Step 1: Collect the Data
+        # Step 1: Collect and Structure the Data
         profile_data = {
+            "name": self.profile_name.get().strip(),
             "accel_points_1": self.display_accel_points_1,
             "decel_points_1": self.display_decel_points_1,
             "accel_points_2": self.display_accel_points_2,
             "decel_points_2": self.display_decel_points_2,
+            # Add other parameters here as per your application's needs
+            # For example:
+            "max_speed_time": 2000.0,  # This should be replaced with the actual value from your app
+            "preheat_time": 800.0,  # Similarly, replace with actual value
+            # Continue for other parameters...
         }
 
-        # Step 2: Read the Profile Name
-        profile_name = self.profile_name.get().strip()
-        if not profile_name:
+        # Step 2: Check if Profile Name is Valid
+        if not profile_data["name"]:
             print("Profile name is empty. Please enter a valid name.")
             return
 
@@ -1591,16 +1604,25 @@ class BezierCurveApp:
         filename = "database_bezier.json"
         if os.path.exists(filename):
             with open(filename, 'r') as file:
-                profiles = json.load(file)
+                database = json.load(file)
+                profiles = database.get("profiles", [])
         else:
-            profiles = {}
+            profiles = []
 
-        profiles[profile_name] = profile_data
+        # Check if profile already exists, update it, otherwise append a new one
+        existing_profile = next((p for p in profiles if p["name"] == profile_data["name"]), None)
+        if existing_profile:
+            profiles[profiles.index(existing_profile)] = profile_data
+        else:
+            profiles.append(profile_data)
+
+        database = {"profiles": profiles}
 
         with open(filename, 'w') as file:
-            json.dump(profiles, file, indent=4)
+            json.dump(database, file, indent=4)
 
-        print(f"Profile '{profile_name}' saved successfully.")
+        print(f"Profile '{profile_data['name']}' saved successfully.")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
