@@ -74,6 +74,8 @@ class Database:
             return True  # Deletion successful
         else:
             return False  # Profile not found or deletion failed
+
+
     def save_data(self):
         with open(self.filename, 'w') as file:
             json.dump(self.data, file, indent=4)
@@ -132,7 +134,6 @@ class PowerMeterControl:
         if self.is_connected():
             inst = self.rm.open_resource(self.dev_name)
             self.power_meter = ThorlabsPM100(inst=inst)
-            print(inst.query("*IDN?"))
             init = self.power_meter.read
             print('initial value:', float(init))
             return True
@@ -549,7 +550,7 @@ class GUIcontrol:
         self.show_camera_feed()
 
     def setup_gui(self):
-        root.title('Fiber Pulling')
+        root.title('Fiber Pulling Controller')
         self.tapering_setup()
         self.dynamic_button_setup()
         self.dimpling_setup()
@@ -558,7 +559,7 @@ class GUIcontrol:
         self.connection_status_setup()
         self.linear_profile_setup()
         self.live_info_setup()
-        self.bezier_setup()
+        self.bezier_profile_setup()
         if self.arduino_control.get_connection_status():
             self.connection_status_frame.configure(bg="green")
 
@@ -573,36 +574,39 @@ class GUIcontrol:
 
         # Create three vertical sub frames
         column_frame_1 = tk.Frame(main_frame)
-        column_frame_1.grid(row=1, column=0, sticky="nsew", padx=5)
+        column_frame_1.grid(row=1, column=0, sticky="nsew")
 
         column_frame_2 = tk.Frame(main_frame)
-        column_frame_2.grid(row=1, column=1, sticky="nsew", padx=5)
+        column_frame_2.grid(row=1, column=1, sticky="nsew")
 
         column_frame_3 = tk.Frame(main_frame)
-        column_frame_3.grid(row=1, column=2, sticky="nsew", padx=5)
+        column_frame_3.grid(row=1, column=2, sticky="nsew")
 
 
         # Create subframes in the first column frame
-        self.profile_frame = tk.Frame(column_frame_1)
+        self.profile_frame = tk.Frame(column_frame_1, highlightbackground="black", highlightthickness=2)
         self.profile_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.tapering_frame = tk.Frame(column_frame_1)
+        self.tapering_frame = tk.Frame(column_frame_1, highlightbackground="black", highlightthickness=2)
         self.tapering_frame.grid(row=1, column=0, sticky="nsew")
 
-        self.dimpling_frame = tk.Frame(column_frame_1)
+        self.dimpling_frame = tk.Frame(column_frame_1, highlightbackground="black", highlightthickness=2)
         self.dimpling_frame.grid(row=2, column=0, sticky="nsew")
 
-        self.live_info_frame = tk.Frame(column_frame_1)
-        self.live_info_frame.grid(row=3, column=0, sticky="nsew")
+        self.live_info_frame = tk.Frame(column_frame_2, highlightbackground="black", highlightthickness=2)
+        self.live_info_frame.grid(row=1, column=0, sticky="nsew")
 
         # Second Column Frame
-        self.dynamic_button_frame = tk.Frame(column_frame_2)
+        self.dynamic_button_frame = tk.Frame(column_frame_2, highlightbackground="black", highlightthickness=2)
+        self.dynamic_button_frame.columnconfigure(0, weight=1)
         self.dynamic_button_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.power_meter_frame = tk.Frame(column_frame_3, width=400, height=300, bg="grey80")
+        self.power_meter_frame = tk.Frame(column_frame_3, highlightbackground="black", highlightthickness=1,
+                                          width=400, height=300, bg="grey80")
         self.power_meter_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.camera_frame = tk.Frame(column_frame_3, width=400, height=300, bg="grey90")
+        self.camera_frame = tk.Frame(column_frame_3, highlightbackground="black", highlightthickness=1,
+                                     width=400, height=300, bg="grey80")
         self.camera_frame.grid(row=1, column=0, sticky="nsew")
 
         # Configure column and row weights to make subframes expand with window resizing
@@ -782,14 +786,15 @@ class GUIcontrol:
 
 
         # Dynamic Button Frame placement
-        self.Automate_taper_bezier_button.grid(row=0, column=0, pady=5, sticky="nsew")
-        self.Automate_dimple_button.grid(row=2, column=0, pady=5, sticky="nsew")
-        self.Automate_taper_button.grid(row=1, column=0, pady=5,  sticky="nsew")
-        self.Tension_button.grid(row=3, column=0, pady=5, sticky="nsew")
-        self.Fiber_broken_button.grid(row=4, column=0, pady=5, sticky="nsew")
-        self.elec_toggle_button.grid(row=5, column=0, pady=5,  sticky="nsew")
-        self.Emg_button.grid(row=6, column=0, pady=5, sticky="nsew")
-        self.send_parameters_button.grid(row=7, column=0, pady=5, sticky="nsew")
+
+        self.send_parameters_button.grid(row=0, column=0, pady=5, sticky="nsew")
+        self.Automate_taper_bezier_button.grid(row=1, column=0, pady=5, sticky="nsew")
+        self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
+        self.Automate_dimple_button.grid(row=3, column=0, pady=5, sticky="nsew")
+        self.Tension_button.grid(row=4, column=0, pady=5, sticky="nsew")
+        self.Fiber_broken_button.grid(row=5, column=0, pady=5, sticky="nsew")
+        self.elec_toggle_button.grid(row=6, column=0, pady=5,  sticky="nsew")
+        self.Emg_button.grid(row=7, column=0, pady=5, sticky="nsew")
 
         # Dimpling Frame Buttons
         self.Reset_button = tk.Button(self.dimpling_frame, text="Reset", command=self.motor_control.reset, font=("Arial", 10)
@@ -874,7 +879,7 @@ class GUIcontrol:
         dimpling_label.grid(row=0, column=0, columnspan=2)
 
         # Create a listbox to display profiles
-        self.linear_listbox = tk.Listbox(self.profile_frame, width=30, height=5, selectmode=tk.SINGLE)
+        self.linear_listbox = tk.Listbox(self.profile_frame, width=30, height=8, selectmode=tk.SINGLE)
         self.linear_listbox.grid(row=3, column=0, rowspan=3, columnspan=2)
 
         # Load profiles from the database and populate the listbox
@@ -884,10 +889,10 @@ class GUIcontrol:
         self.profile_name_entry.grid(row=1, column=1)
 
         # Buttons for profile management
-        self.load_button = tk.Button(self.profile_frame, text="Load Profile", command=self.load_selected_profile)
+        self.load_button = tk.Button(self.profile_frame, text="Load Profile", command=self.load_lin_profile)
         self.load_button.grid(row=2, column=0, pady=5)
 
-        self.add_button = tk.Button(self.profile_frame, text="Add Profile", command=self.add_profile)
+        self.add_button = tk.Button(self.profile_frame, text="Add Profile", command=self.add_lin_profile)
         self.add_button.grid(row=1, column=0, pady=5)
 
         self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", command=self.delete_lin_profile)
@@ -896,15 +901,15 @@ class GUIcontrol:
         # Load the last used profile on startup
         last_used_profile = database_linear.get_last_used_profile()
         if last_used_profile:
-            self.load_selected_profile(last_used_profile)
+            self.load_lin_profile(last_used_profile)
 
-    def bezier_setup(self):
+    def bezier_profile_setup(self):
         # prepare the widgets of the GUI for dimpling
         bezier_label = tk.Label(self.profile_frame, text="Bezier Profiles", font=("Arial", 15))
         bezier_label.grid(row=0, column=3, columnspan=2)
 
         # Create a listbox to display profiles
-        self.bezier_listbox = tk.Listbox(self.profile_frame, width=30, height=5, selectmode=tk.SINGLE)
+        self.bezier_listbox = tk.Listbox(self.profile_frame, width=30, height=8, selectmode=tk.SINGLE)
         self.bezier_listbox.grid(row=3, column=3, rowspan=3, columnspan=2)
 
         # To load Bezier profiles
@@ -925,7 +930,7 @@ class GUIcontrol:
         for profile in profiles:
             listbox.insert(tk.END, profile["name"])
 
-    def load_selected_profile(self, profile_name=None):
+    def load_lin_profile(self, profile_name=None):
         if profile_name is None:
             # Get the selected profile name from the listbox
             selected_profile_name = self.linear_listbox.get(tk.ACTIVE)
@@ -974,7 +979,7 @@ class GUIcontrol:
             self.Tension_2_entry.delete(0, tk.END)
             self.Tension_2_entry.insert(0, selected_profile["tension_steps"][1])
 
-    def add_profile(self):
+    def add_lin_profile(self):
 
         # Collect data from entry boxes
         profile_name = self.profile_name_entry.get()
@@ -1189,19 +1194,28 @@ class GUIcontrol:
             self.root.after(500, self.update_fiber_loss_periodically)
 
     def open_bezier_window(self):
-        # This method opens the new window with BezierCurveApp
         bezier_window = tk.Toplevel(root)
-        bezier_window.title("Bezier Curve App")
-        bezier_app = BezierCurveApp(bezier_window)
+        bezier_app = BezierCurveApp(bezier_window, self.database_bez)
+
+        def on_close():
+            bezier_window.destroy()
+            self.database_bez.data = self.database_bez.load_data()  # Reload data
+            self.load_profiles(self.database_bez, self.bezier_listbox)
+
+        bezier_window.protocol("WM_DELETE_WINDOW", on_close)
+
 
 class BezierCurveApp:
-    def __init__(self, root):
+    def __init__(self, root, database):
+
+        self.database = database
+
 
         # Define constant for the frame size
         self.padding_y = 80
         self.padding_x = 80
         self.frame_size_x = 1000
-        self.frame_size_y = 400
+        self.frame_size_y = 500
         self.y_lower_bound = 0
         self.x_lower_bound = 0
         self.y_upper_bound = self.frame_size_y - 2 * self.padding_y
@@ -1554,16 +1568,16 @@ class BezierCurveApp:
 
     def draw_grid(self, spacing=50):
         # Draw horizontal grid lines
-        for i in range(0, self.frame_size_y, spacing):
+        for i in range(2*spacing, self.frame_size_y-spacing, spacing):
             self.canvas.create_line(self.padding_x, i, self.frame_size_x - self.padding_x, i, fill="#ddd")
 
         # Draw vertical grid lines
-        for i in range(0, self.frame_size_x, spacing):
+        for i in range(2*spacing, self.frame_size_x-spacing, spacing):
             self.canvas.create_line(i, self.padding_y, i, self.frame_size_y - self.padding_y, fill="#ddd")
 
         # Draw horizontal grid lines at the upper and lower bounds
-        self.canvas.create_line(self.padding_x, self.padding_y, self.frame_size_x - self.padding_x, self.padding_y, fill="#ddd")
-        self.canvas.create_line(self.padding_x, self.frame_size_y - self.padding_y, self.frame_size_x - self.padding_x, self.frame_size_y - self.padding_y, fill="#ddd")
+        #self.canvas.create_line(self.padding_x, self.padding_y, self.frame_size_x - self.padding_x, self.padding_y, fill="#ddd")
+        #self.canvas.create_line(self.padding_x, self.frame_size_y - self.padding_y, self.frame_size_x - self.padding_x, self.frame_size_y - self.padding_y, fill="#ddd")
 
         # Draw the x and y axes
         self.canvas.create_line(self.adjust_x(self.x_lower_bound), self.adjust_y(self.y_lower_bound),
@@ -1588,39 +1602,11 @@ class BezierCurveApp:
             "decel_points_1": self.display_decel_points_1,
             "accel_points_2": self.display_accel_points_2,
             "decel_points_2": self.display_decel_points_2,
-            # Add other parameters here as per your application's needs
-            # For example:
-            "max_speed_time": 2000.0,  # This should be replaced with the actual value from your app
-            "preheat_time": 800.0,  # Similarly, replace with actual value
-            # Continue for other parameters...
         }
-
-        # Step 2: Check if Profile Name is Valid
         if not profile_data["name"]:
             print("Profile name is empty. Please enter a valid name.")
             return
-
-        # Step 3: Save to JSON Database
-        filename = "database_bezier.json"
-        if os.path.exists(filename):
-            with open(filename, 'r') as file:
-                database = json.load(file)
-                profiles = database.get("profiles", [])
-        else:
-            profiles = []
-
-        # Check if profile already exists, update it, otherwise append a new one
-        existing_profile = next((p for p in profiles if p["name"] == profile_data["name"]), None)
-        if existing_profile:
-            profiles[profiles.index(existing_profile)] = profile_data
-        else:
-            profiles.append(profile_data)
-
-        database = {"profiles": profiles}
-
-        with open(filename, 'w') as file:
-            json.dump(database, file, indent=4)
-
+        self.database.add_lin_profile(profile_data)  # Use the add_profile method of Database
         print(f"Profile '{profile_data['name']}' saved successfully.")
 
 
