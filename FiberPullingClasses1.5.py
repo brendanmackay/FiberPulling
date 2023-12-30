@@ -875,6 +875,7 @@ class GUIcontrol:
 
     def linear_profile_setup(self):
         # prepare the widgets of the GUI for dimpling
+        #as
         dimpling_label = tk.Label(self.profile_frame, text="Linear Profiles", font=("Arial", 15))
         dimpling_label.grid(row=0, column=0, columnspan=2)
 
