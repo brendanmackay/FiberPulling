@@ -12,8 +12,8 @@ class BezierCurveApp:
         # Define constant for the frame size
         self.padding_y = 80
         self.padding_x = 80
-        self.frame_size_x = 1200
-        self.frame_size_y = 500
+        self.frame_size_x = 1000
+        self.frame_size_y = 400
         self.y_lower_bound = 0
         self.x_lower_bound = 0
         self.y_upper_bound = self.frame_size_y - 2 * self.padding_y
@@ -82,20 +82,20 @@ class BezierCurveApp:
 
         # Create labels for displaying acceleration points
         self.accel_points_label_1 = tk.Label(self.control_panel, textvariable=self.accel_points_1_text,
-                                             font=("Arial", 16, "bold"))
+                                             font=("Arial", 10, "bold"))
         self.accel_points_label_2 = tk.Label(self.control_panel, textvariable=self.accel_points_2_text,
-                                             font=("Arial", 16, "bold"))
+                                             font=("Arial", 10, "bold"))
 
 
         # Create labels for displaying deceleration points
         self.decel_points_label_1 = tk.Label(self.control_panel, textvariable=self.decel_points_1_text,
-                                             font=("Arial", 16, "bold"))
+                                             font=("Arial", 10, "bold"))
         self.decel_points_label_2 = tk.Label(self.control_panel, textvariable=self.decel_points_2_text,
-                                             font=("Arial", 16, "bold"))
-        self.accel_points_label_1.grid(row=0, column=4, padx=40, pady=10)
-        self.decel_points_label_1.grid(row=1, column=4, padx=40, pady=10)
-        self.accel_points_label_2.grid(row=2, column=4, padx=40, pady=10)
-        self.decel_points_label_2.grid(row=3, column=4, padx=40, pady=10)
+                                             font=("Arial", 10, "bold"))
+        self.accel_points_label_1.grid(row=0, column=4, padx=40, pady=5)
+        self.decel_points_label_1.grid(row=1, column=4, padx=40, pady=5)
+        self.accel_points_label_2.grid(row=2, column=4, padx=40, pady=5)
+        self.decel_points_label_2.grid(row=3, column=4, padx=40, pady=5)
 
         # Appropriately scale points
         self.update_display_control_points()

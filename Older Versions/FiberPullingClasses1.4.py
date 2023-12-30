@@ -1126,7 +1126,7 @@ if __name__ == "__main__":
     root = tk.Tk()
 
     # Create instances of the MotorControl and ArduinoControl classes
-    database = Database("../database.json")
+    database = Database("../database_linear.json")
     camera_control = CameraControl()
     arduino_control = ArduinoControl()
     power_meter = PowerMeterControl()
