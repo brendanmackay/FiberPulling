@@ -494,36 +494,6 @@ class MotorControl:
                 break
             time.sleep(0.5)  # Wait for a short period before checking again
 
-    def move_motor_2(self, speed, steps):       # This function is broken for some reason
-        """
-        Moves Motor 1 at the specified speed for a set number of steps.
-        Parameters:
-        - speed (int): Desired speed for Motor 1.
-        - steps (int): Number of steps Motor 1 should move. Positive values for forward movement, negative for backward.
-        """
-        # Set the speed
-        speed_cmd = f"SETSP2_{speed:05}\n"
-        self.arduino_control.send_command(speed_cmd)
-        time.sleep(0.1)
-        print("move")
-        # Set the movement direction and steps
-        if steps >= 0:
-            print("Move forward")
-            move_cmd = f"MOVRF_2{steps:05}\n"
-        else:
-            print("Move back")
-            steps = abs(steps)
-            move_cmd = f"MOVRB_2{steps:05}\n"
-
-        self.arduino_control.send_command(move_cmd)
-        time.sleep(0.1)
-        while True:
-            status = self.arduino_control.read_from_arduino()  # assuming you have such a method
-            print(status)
-            if status == "Done":
-                break
-            time.sleep(0.5)  # Wait for a short period before checking again
-
 class GUIcontrol:
     def __init__(self, root, motor_control, arduino_control, power_meter, camera_control, database_linear, database_bezier):
         self.root = root
@@ -597,7 +567,7 @@ class GUIcontrol:
         self.live_info_frame.grid(row=1, column=0, sticky="nsew")
 
         # Second Column Frame
-        self.dynamic_button_frame = tk.Frame(column_frame_2, highlightbackground="black", highlightthickness=2)
+        self.dynamic_button_frame = tk.Frame(column_frame_2)
         self.dynamic_button_frame.columnconfigure(0, weight=1)
         self.dynamic_button_frame.grid(row=0, column=0, sticky="nsew")
 
@@ -884,7 +854,7 @@ class GUIcontrol:
         self.linear_listbox.grid(row=3, column=0, rowspan=3, columnspan=2)
 
         # Load profiles from the database and populate the listbox
-        self.load_profiles(self.database_lin, self.linear_listbox)
+        self.refresh_profiles(self.database_lin, self.linear_listbox)
 
         self.profile_name_entry = tk.Entry(self.profile_frame, width=10, font=("Arial", 10))
         self.profile_name_entry.grid(row=1, column=1)
@@ -914,7 +884,7 @@ class GUIcontrol:
         self.bezier_listbox.grid(row=3, column=3, rowspan=3, columnspan=2)
 
         # To load Bezier profiles
-        self.load_profiles(self.database_bez, self.bezier_listbox)
+        self.refresh_profiles(self.database_bez, self.bezier_listbox)
 
         self.new_button = tk.Button(self.profile_frame, text="Create New Profile", width=15, command=self.open_bezier_window)
         self.new_button.grid(row=1, column=3, pady=5, columnspan=2)
@@ -922,7 +892,7 @@ class GUIcontrol:
         self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", width=15, command=self.delete_bez_profile)
         self.delete_button.grid(row=2, column=3, pady=5, columnspan=2)
 
-    def load_profiles(self, database, listbox):
+    def refresh_profiles(self, database, listbox):
         # Clear the listbox
         listbox.delete(0, tk.END)
 
@@ -1015,7 +985,7 @@ class GUIcontrol:
         self.database_lin.add_profile(new_profile)
 
         # To load linear profiles
-        self.load_profiles(self.database_lin, self.linear_listbox)
+        self.refresh_profiles(self.database_lin, self.linear_listbox)
 
     def delete_lin_profile(self):
         # Get the selected profile name from your listbox or other widget
@@ -1029,7 +999,7 @@ class GUIcontrol:
             print(f"Profile '{selected_profile}' deleted successfully.")
             # Refresh your list of profiles in the GUI if needed
             # To load linear profiles
-            self.load_profiles(self.database_lin, self.linear_listbox)
+            self.refresh_profiles(self.database_lin, self.linear_listbox)
         else:
             print(f"Profile '{selected_profile}' not found or deletion failed.")
 
@@ -1045,7 +1015,7 @@ class GUIcontrol:
             print(f"Profile '{selected_profile}' deleted successfully.")
             # Refresh your list of profiles in the GUI if needed
             # To load linear profiles
-            self.load_profiles(self.database_bez, self.bezier_listbox)
+            self.refresh_profiles(self.database_bez, self.bezier_listbox)
         else:
             print(f"Profile '{selected_profile}' not found or deletion failed.")
 
@@ -1201,7 +1171,7 @@ class GUIcontrol:
         def on_close():
             bezier_window.destroy()
             self.database_bez.data = self.database_bez.load_data()  # Reload data
-            self.load_profiles(self.database_bez, self.bezier_listbox)
+            self.refresh_profiles(self.database_bez, self.bezier_listbox)
 
         bezier_window.protocol("WM_DELETE_WINDOW", on_close)
 

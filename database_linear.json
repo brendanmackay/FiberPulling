@@ -409,7 +409,34 @@
                 5.0,
                 5.0
             ]
+        },
+        {
+            "name": "Home Setup",
+            "motor_speeds": [
+                60,
+                200,
+                1000
+            ],
+            "motor_accelerations": [
+                6,
+                30,
+                0
+            ],
+            "max_speed_time": 0.0,
+            "preheat_time": 800.0,
+            "dimple_depth": 15,
+            "dimple_heat_time": 500.0,
+            "motor_resolution": [
+                "High Resolution",
+                "Mid Resolution",
+                "low"
+            ],
+            "knife_calibration_height": 87900,
+            "tension_steps": [
+                5.0,
+                5.0
+            ]
         }
     ],
-    "last_used_profile": "80 Accel #2"
+    "last_used_profile": "160 Accel #2"
 }
