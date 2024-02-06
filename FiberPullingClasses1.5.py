@@ -218,6 +218,7 @@ class ArduinoControl:
     def send_command(self, command):
         if self.arduino:
             self.arduino.write(command.encode())
+            time.sleep(0.05)
 
     def read_from_arduino(self):
         if self.arduino:
@@ -243,6 +244,15 @@ class ArduinoControl:
             return True
         else:
             return False
+
+    def send_bezier_profile(self, bezier_profile):
+        for profile_type, points in bezier_profile.items():
+            for point in points:
+                command = f"{profile_type}:{point[0]},{point[1]}\n"
+                self.send_command(command)
+                # Wait for an ack if implementing handshaking
+        self.send_command("END\n")  # Signal the end of transmission
+
 
     def assign_parameters(self, Speed1_entry, Speed2_entry, Accel1_entry, Accel2_entry,
                         enab_selection, Res1_selection, Res2_selection, prht_entry, waist_time,  dimple_speed, dimple_depth,
@@ -455,7 +465,7 @@ class MotorControl:
 
         time.sleep(0.1)
         self.arduino_control.send_command("TAPER\n")
-        print("Bezier Taper")
+        print("Linear Taper")
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
             if status == "Tapering Complete":
@@ -886,11 +896,14 @@ class GUIcontrol:
         # To load Bezier profiles
         self.refresh_profiles(self.database_bez, self.bezier_listbox)
 
-        self.new_button = tk.Button(self.profile_frame, text="Create New Profile", width=15, command=self.open_bezier_window)
-        self.new_button.grid(row=1, column=3, pady=5, columnspan=2)
+        self.new_button = tk.Button(self.profile_frame, text="Create Profile", width=10, command=self.open_bezier_window)
+        self.new_button.grid(row=1, column=3, pady=5, columnspan=1)
 
-        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", width=15, command=self.delete_bez_profile)
-        self.delete_button.grid(row=2, column=3, pady=5, columnspan=2)
+        self.delete_button = tk.Button(self.profile_frame, text="Delete Profile", width=10, command=self.delete_bez_profile)
+        self.delete_button.grid(row=1, column=4, pady=5, columnspan=1)
+
+        self.send_profile_button = tk.Button(self.profile_frame, text = "Send Profile", width=15, command=self.send_bez_profile)
+        self.send_profile_button.grid(row=2, column=3, pady=5, columnspan=2)
 
     def refresh_profiles(self, database, listbox):
         # Clear the listbox
@@ -1018,6 +1031,12 @@ class GUIcontrol:
             self.refresh_profiles(self.database_bez, self.bezier_listbox)
         else:
             print(f"Profile '{selected_profile}' not found or deletion failed.")
+
+    def send_bez_profile(self):
+        selected_profile_name = self.bezier_listbox.get(tk.ACTIVE)
+        bezier_profile = self.database_bez.find_profile_by_name(selected_profile_name)
+        print(bezier_profile)
+        self.arduino_control.send_bezier_profile(bezier_profile)
 
     def update_electrode_status(self):
         state = self.arduino_control.electrode_state
@@ -1577,7 +1596,7 @@ class BezierCurveApp:
         if not profile_data["name"]:
             print("Profile name is empty. Please enter a valid name.")
             return
-        self.database.add_lin_profile(profile_data)  # Use the add_profile method of Database
+        self.database.add_profile(profile_data)  # Use the add_profile method of Database
         print(f"Profile '{profile_data['name']}' saved successfully.")
 
 

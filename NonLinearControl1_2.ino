@@ -2,33 +2,43 @@
 #include <Stepper.h>
 
 //==========================================================================
-const int MAX_BEZIER_PROFILE_SIZE = 350; // Set your desired maximum size
+const int MAX_BEZIER_PROFILE_SIZE = 300; // Set your desired maximum size
 // This uses a large amount of the memory on the arduino!!! 
 //===========================================================================
 //pin assignments for Motor 1
-const int dirPin_1 = 38; 
-const int stepPin_1 = 40;
+//const int dirPin_1 = 38; 
+//const int stepPin_1 = 40;
 const int Sleep_1 = 42;
 const int Reset_1 = 44;
 const int M2_1 = 46;
 const int M1_1 = 48;
 const int M0_1 = 50;
-const int Enable_1 = 52;
-const int LEDPin_1 = 13;
+//const int Enable_1 = 52;
+//const int LEDPin_1 = 13;
+
+
+const int dirPin_1 = 5; 
+const int stepPin_1 = 2;
+const int Enable_1 = 8;
 
 
 //=============================================================================
 //pin assignments for Motor 2
-const int dirPin_2 = 22;
-const int stepPin_2 = 24;
+//const int dirPin_2 = 22;
+//const int stepPin_2 = 24;
 const int Sleep_2 = 26;
 const int Reset_2 = 28;
 const int M2_2 = 30;
 const int M1_2 = 32;
 const int M0_2 = 34;
-const int Enable_2 = 36;
+//const int Enable_2 = 36;
+//const int LEDPin_2 = 13;
 
-const int LEDPin_2 = 13;
+
+const int dirPin_2 = 7;
+const int stepPin_2 = 4;
+const int Enable_2 = 8;
+const int RelayPin = 40;
 
 
 #define motorInterfaceType 1
@@ -50,7 +60,7 @@ const int Enable_3 = 39;
 
 int analogPin = A0;
 int val = 0;
-const int RelayPin = 4;
+//const int RelayPin = 4;
 unsigned long TimeD;
 String state;
 int k = 0;
@@ -95,6 +105,7 @@ struct Point {
     float y; // Speed in steps per second
 };
 
+#define MAX_POINTS 10  // Maximum number of points per profile type
 //=============================================================================
 // StepperMotor class
 class BezierCurve {
@@ -199,6 +210,14 @@ struct MotorState {
     AccelStepper& stepper;
     BezierCurve& curve;
 
+    void resetCounter() {
+        counter = 0;
+    }
+
+    void setinitialMicros() {
+      initialMicros = micros();
+    }
+
     MotorState(AccelStepper& stepperRef, BezierCurve& curveRef)
         : stepper(stepperRef), curve(curveRef), counter(0), currentMicros(0) {
         initialMicros = micros();
@@ -208,6 +227,9 @@ struct MotorState {
 //============================================================================
 AccelStepper myStepper_1(motorInterfaceType, stepPin_1, dirPin_1);
 AccelStepper myStepper_2(motorInterfaceType, stepPin_2, dirPin_2);
+// CHANGE BACK MOTOR INTERFACE TYPE TO 1
+//AccelStepper myStepper_1(motorInterfaceType, 8, 10, 9, 11);
+//AccelStepper myStepper_2(motorInterfaceType, 4, 6, 5, 7);
 AccelStepper myStepper_3(motorInterfaceType, stepPin_3, dirPin_3);
 
 //===========================================================================
@@ -221,16 +243,16 @@ void setup() {
   Serial.begin(9600); //serial initialization
 
   // Populate bezier curves slow stage
-  Point accelPoints1[] = {{0, 80}, {3000,40}, {8000, 20}, {10000, 20}};
-  Point decelPoints1[] = {{12000, 20}, {14000, 20}, {16000, 20}, {18000, 40}};
+  Point accelPoints1[] = {{0, 80}, {2500,70}, {7000, 70}, {9500, 20}};
+  Point decelPoints1[] = {{10500, 20}, {13000, 70}, {17500, 70}, {20000, 80}};
   curvemotor1.setBezierCurve(accelPoints1, 4);
   curvemotor1.calculateAccelProfile();
   curvemotor1.setBezierCurve(decelPoints1, 4);
   curvemotor1.calculateDecelProfile();
 
   // populate bezier curves fast stage
-  Point accelPoints2[] = {{0, 0}, {325,-100}, {10000, 0}, {10000, -700}};
-  Point decelPoints2[] = {{12000, -700}, {12000, 0}, {17000, -100}, {18000, 20}};
+  Point accelPoints2[] = {{0, -80}, {0,-200}, {8000, 100}, {9500, -400}};
+  Point decelPoints2[] = {{10500, -400}, {12000, 100}, {20000, -200}, {20000, -80}};
   curvemotor2.setBezierCurve(accelPoints2, 4);
   curvemotor2.calculateAccelProfile();
   curvemotor2.setBezierCurve(decelPoints2, 4);
@@ -298,10 +320,11 @@ void setup() {
 
 void loop() {
 
-  // delay(2000);
-  // moveOneMotorWithBezierCurve(myStepper_2, curvemotor2);
-  // delay(2000);
-  // taper();
+  //moveOneMotorWithBezierCurve(myStepper_1, curvemotor1);
+  //delay(2000);
+  //moveOneMotorWithBezierCurve(myStepper_2, curvemotor2);
+  //delay(2000);
+  //taper();
   // delay(10000);
 
   if (Serial.available() > 0) { 
@@ -441,41 +464,10 @@ void loop() {
         Serial.println(myStepper_1.currentPosition());
       }
 
-      else if (state.substring(0, 7) == "MOVRF_2" ) {
-        int STP_2 = (state.substring(7, 12)).toInt(); //data of how many steps to move
-        myStepper_2.setCurrentPosition(0);
-        digitalWrite(dirPin_2, LOW); //set direction pin to move forward
-        Serial.println("Done");
-        while (myStepper_2.currentPosition() < STP_2) { //run stepper
-          myStepper_2.move(STP_2);
-          myStepper_2.run();
-        }
-      } 
-
-      //=====================================================================================================================
-      //Move motor 2 backwards
-      else if (state.substring(0, 7) == "MOVRB_2" ) {
-        int STP_2 = (state.substring(7, 12)).toInt(); //data of how many steps to move
-        myStepper_2.setCurrentPosition(0);
-        digitalWrite(dirPin_2, HIGH); // Set direction pin for backwards movement
-        Serial.println("Moving motor 2 backward...");
-
-        while (myStepper_2.currentPosition() > -STP_2) {
-            myStepper_2.move(-STP_2); // Negative steps for backward movement
-            myStepper_2.run();
-        }
-
-        Serial.println("Done");
-        Serial.println(myStepper_2.currentPosition());
-      }
-
       //============================================================================================================
       //run motor to taper with linear profile
     else if  (state.substring(0, 6) == "TAPERB"){
-        digitalWrite(RelayPin, HIGH);
-        delay(0.5); 
         taper();
-        digitalWrite(RelayPin, LOW);
         Serial.println("Tapering Complete");
     }
 
@@ -494,14 +486,21 @@ void loop() {
           myStepper_2.run();
           myStepper_1.run();
           new_string();
-          if (millis() - startTime > accel_duration + waist_duration && !stop) {
+          if (millis() - startTime > accel_duration + waist_duration && !stop) { // Send a command to stop the motors with the current acceleration
               Serial.println("Stop");
               stop = true;
               myStepper_1.stop();
               myStepper_2.stop();
           }
+          //if (millis() - startTime > 2*accel_duration + waist_duration ) {
+              
+          //}
+          //if (millis() - startTime > 2*accel_duration + waist_duration) {
+          //    myStepper_1.stop();
+          //}
 
         }
+        digitalWrite(RelayPin, LOW);
         Serial.println("Stopped");
         digitalWrite(RelayPin, LOW);
         Serial.println("Tapering Complete");
@@ -852,20 +851,28 @@ void taper(){
   float runTime = millis()-startMillis;
   int motor1RunTime = curvemotor1.getMaxTime();
   int motor2RunTime = curvemotor2.getMaxTime();
+  motorState1.resetCounter();
+  motorState2.resetCounter();
+  motorState1.setinitialMicros();
+  motorState2.setinitialMicros();
+  digitalWrite(RelayPin, HIGH);
+  delay(400); 
   while (runTime < motor1RunTime ||  runTime < motor2RunTime){
     if (runTime < motor1RunTime){
-         moveMotorBezier(motorState1);
+         stepMotorBezier(motorState1);
     }
     if (runTime < motor2RunTime){
-        moveMotorBezier(motorState2);
+        stepMotorBezier(motorState2);
     }
   runTime = millis()-startMillis;
   new_string();
   }
+  motorState1.stepper.stop();
+  motorState2.stepper.stop();
+  digitalWrite(RelayPin, LOW);
 }
 
-
-void moveMotorBezier(MotorState& motorState) {
+void stepMotorBezier(MotorState& motorState) {
     unsigned long elapsedTimeForPoint;
 
     motorState.stepper.runSpeed();
@@ -889,12 +896,8 @@ void moveMotorBezier(MotorState& motorState) {
                 motorState.stepper.setSpeed(motorState.curve.getDecelPoint(motorState.counter - accelProfileLen).y);
             }
         }
-    } else {
-        motorState.stepper.setSpeed(0); // Stop the motor if the end of the curve is reached
-    }
+    } 
 }
-
-
 
 void moveOneMotorWithBezierCurve(AccelStepper& stepper, BezierCurve& curve) {
     unsigned long initialMicros = micros();
@@ -905,7 +908,7 @@ void moveOneMotorWithBezierCurve(AccelStepper& stepper, BezierCurve& curve) {
 
     stepper.setSpeed(curve.getAccelPoint(counter).y); // Set initial speed
 
-    while (counter < accelProfileLen + 0.6*decelProfileLen) {
+    while (counter < accelProfileLen + decelProfileLen) {
         stepper.runSpeed();
         currentMicros = micros(); // Update current time
 
@@ -926,8 +929,8 @@ void moveOneMotorWithBezierCurve(AccelStepper& stepper, BezierCurve& curve) {
             }
         }
     }
-
     stepper.setSpeed(0); // Stop the motor at the end
+    stepper.stop();
 }
 
 

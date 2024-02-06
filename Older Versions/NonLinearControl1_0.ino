@@ -2,8 +2,8 @@
 #include <Stepper.h>
 
 //==========================================================================
-const int MAX_BEZIER_PROFILE_SIZE = 200; // Set your desired maximum size
-
+const int MAX_BEZIER_PROFILE_SIZE = 350; // Set your desired maximum size
+// This uses a large amount of the memory on the arduino!!! 
 //===========================================================================
 //pin assignments for Motor 1
 const int dirPin_1 = 38; 
@@ -210,7 +210,7 @@ AccelStepper myStepper_1(motorInterfaceType, stepPin_1, dirPin_1);
 AccelStepper myStepper_2(motorInterfaceType, stepPin_2, dirPin_2);
 AccelStepper myStepper_3(motorInterfaceType, stepPin_3, dirPin_3);
 
-//=============================================================================
+//===========================================================================
 BezierCurve curvemotor1;
 BezierCurve curvemotor2;
 //===========================================================================
@@ -221,16 +221,16 @@ void setup() {
   Serial.begin(9600); //serial initialization
 
   // Populate bezier curves slow stage
-  Point accelPoints1[] = {{0, 100}, {3000,0}, {13000, 100}, {16000, 0}};
-  Point decelPoints1[] = {{18000, 0}, {21000, 0}, {29000, 0}, {32000, 0}};
+  Point accelPoints1[] = {{0, 80}, {3000,40}, {8000, 20}, {10000, 20}};
+  Point decelPoints1[] = {{12000, 20}, {14000, 20}, {16000, 20}, {18000, 40}};
   curvemotor1.setBezierCurve(accelPoints1, 4);
   curvemotor1.calculateAccelProfile();
   curvemotor1.setBezierCurve(decelPoints1, 4);
   curvemotor1.calculateDecelProfile();
 
   // populate bezier curves fast stage
-  Point accelPoints2[] = {{0, 0}, {325,-175}, {16000, 0}, {16000, -900}};
-  Point decelPoints2[] = {{18000, -900}, {18000, -900}, {3100, -600}, {32000, 0}};
+  Point accelPoints2[] = {{0, 0}, {325,-100}, {10000, 0}, {10000, -700}};
+  Point decelPoints2[] = {{12000, -700}, {12000, 0}, {17000, -100}, {18000, 20}};
   curvemotor2.setBezierCurve(accelPoints2, 4);
   curvemotor2.calculateAccelProfile();
   curvemotor2.setBezierCurve(decelPoints2, 4);
@@ -271,7 +271,7 @@ void setup() {
   Resolution(2, "HI");
   digitalWrite(Enable_2, LOW);
   pinMode(dirPin_2, OUTPUT);
-//---------------------------------------------------------------------------------------
+//==========================================================================
 //motor 3
  pinMode(Sleep_3, OUTPUT); //motor 3 pin initialization
   pinMode(Reset_3, OUTPUT);
@@ -294,13 +294,13 @@ void setup() {
   myStepper_3.setMaxSpeed(3000);
   //------------------------------------------------------------------------------
 }
+
+
 void loop() {
 
-  delay(2000);
-  moveOneMotorWithBezierCurve(myStepper_2, curvemotor2);
-
-
-  delay(2000);
+  // delay(2000);
+  // moveOneMotorWithBezierCurve(myStepper_2, curvemotor2);
+  // delay(2000);
   // taper();
   // delay(10000);
 
@@ -472,7 +472,10 @@ void loop() {
       //============================================================================================================
       //run motor to taper with linear profile
     else if  (state.substring(0, 6) == "TAPERB"){
+        digitalWrite(RelayPin, HIGH);
+        delay(0.5); 
         taper();
+        digitalWrite(RelayPin, LOW);
         Serial.println("Tapering Complete");
     }
 
@@ -902,7 +905,7 @@ void moveOneMotorWithBezierCurve(AccelStepper& stepper, BezierCurve& curve) {
 
     stepper.setSpeed(curve.getAccelPoint(counter).y); // Set initial speed
 
-    while (counter < accelProfileLen + decelProfileLen) {
+    while (counter < accelProfileLen + 0.6*decelProfileLen) {
         stepper.runSpeed();
         currentMicros = micros(); // Update current time
 
@@ -916,9 +919,10 @@ void moveOneMotorWithBezierCurve(AccelStepper& stepper, BezierCurve& curve) {
             counter++; // Move to the next point
             if (counter < accelProfileLen) {
                 stepper.setSpeed(curve.getAccelPoint(counter).y);
+                Serial.println(stepper.speed());
             } else {
                 stepper.setSpeed(curve.getDecelPoint(counter - accelProfileLen).y);
-                //Serial.println(stepper.speed());
+                Serial.println(stepper.speed());
             }
         }
     }
