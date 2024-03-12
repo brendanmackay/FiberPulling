@@ -422,7 +422,7 @@ class MotorControl:
 
         self.power_meter.clear_power_meter_data()
         time.sleep(0.1)
-        self.arduino_control.send_command('TAPER\n')
+        self.arduino_control.send_command('TAPERB\n')
         while True:
             status = self.arduino_control.read_from_arduino()  # assuming you have such a method
             if status == "Tapering Complete":
@@ -431,11 +431,6 @@ class MotorControl:
         self.power_meter.save_power_meter_data()
 
         self.center_taper()
-        while True:
-            status = self.arduino_control.read_from_arduino()
-            if status == "Centered":
-                break
-            time.sleep(1)
 
         # Dimple the taper
         self.power_meter.clear_power_meter_data()
