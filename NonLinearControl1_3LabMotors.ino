@@ -319,14 +319,8 @@ void setup() {
 
 void loop() {
 
-  //moveOneMotorWithBezierCurve(myStepper_1, curvemotor1);
-  //delay(2000);
-  //moveOneMotorWithBezierCurve(myStepper_2, curvemotor2);
-  //delay(2000);
-  //taper();
-  // delay(10000);
 
-  if (Serial.available() > 0) { 
+  if (Serial.available() > 0) {
     state = Serial.readStringUntil('\n'); //get command
     state.trim();
     Serial.println(state);
@@ -339,14 +333,14 @@ void loop() {
     else if (state.substring(0, 7) == "DISAB_1" ) {
       digitalWrite(Enable_1, HIGH);
       Serial.println("Motor 1 disabled");
-    } 
+    }
     //=====================================================================================================================
     //set resolution low for motor1
     else if (state.substring(0, 3) == "RES" ) {
       int num = state.substring(6,7).toInt();
       String com = state.substring(3,5);
       Resolution(num, com);
-    } 
+    }
     //=====================================================================================================================
     //set speed of motor 1
     else if (state.substring(0, 5) == "SETSP" ) {
@@ -384,7 +378,7 @@ void loop() {
     else if (state.substring(0, 7) == "DISAB_2" ) {
       digitalWrite(Enable_2, HIGH);
       Serial.println("Motor 2 disabled");
-    } 
+    }
     //=====================================================================================================================
     //move motor 2 forward
 
@@ -397,7 +391,7 @@ void loop() {
     }
     //=====================================================================================================================
     //dimple delay time
-    else if (state.substring(0,4) == "TIME"){ 
+    else if (state.substring(0,4) == "TIME"){
       TimeD = (state.substring(4,12)).toInt();
     }
     else if(state.substring(0,5) == "DEPTH"){
@@ -446,7 +440,7 @@ void loop() {
           myStepper_1.move(STP_1);
           myStepper_1.run();
         }
-      } 
+      }
       //=====================================================================================================================
       //move motor 1 backwards
       else if (state.substring(0, 7) == "MOVRB_1" ) {
@@ -475,7 +469,7 @@ void loop() {
         myStepper_1.move(200000);
 
         digitalWrite(RelayPin, HIGH);
-        delay(prht_time); 
+        delay(prht_time);
 
         bool stop = false;
         unsigned long startTime = millis();
@@ -492,7 +486,7 @@ void loop() {
               myStepper_2.stop();
           }
           //if (millis() - startTime > 2*accel_duration + waist_duration ) {
-              
+
           //}
           //if (millis() - startTime > 2*accel_duration + waist_duration) {
           //    myStepper_1.stop();
@@ -508,35 +502,35 @@ void loop() {
         fin_pos_2 = myStepper_2.currentPosition();
 
       }
-      
+
       //=====================================================================================================================
       //Reset to Home Position
       else if (state.substring(0,4) == "HOME"){ //reset button
         Serial.println("Reseting");
-        
+
         Serial.println(home1); //Positions to return to
-        Serial.println(home2);      
+        Serial.println(home2);
 
         Serial.println(myStepper_1.currentPosition()); //current positions
         Serial.println(myStepper_2.currentPosition());
 
         Resolution(1, "HA"); //set resolution to be the same
         Resolution(2, "HA");
-      
+
         myStepper_1.moveTo(home1); //move and speed commands
         myStepper_1.setMaxSpeed(2000);
 
         myStepper_2.moveTo(home2);
         myStepper_2.setMaxSpeed(2000);
-    
+
         while (myStepper_2.distanceToGo()!=0){ //execute run
           myStepper_2.run();
           myStepper_1.run();
           new_string();
         }
-        Serial.println(myStepper_2.currentPosition()); 
+        Serial.println(myStepper_2.currentPosition());
         Serial.println("Motor 2 home");
-      
+
         Serial.println(myStepper_1.currentPosition());
         Serial.println("motor 1 home");
       }
@@ -553,28 +547,30 @@ void loop() {
 
         Serial.println(targ_pos_1); //target position
         Serial.println(targ_pos_2);
-        
+
         Serial.println(myStepper_1.currentPosition()); //current position
         Serial.println(myStepper_2.currentPosition());
-        
-        myStepper_2.setAcceleration(10000); //move, acceleration commands
+
+        myStepper_2.setAcceleration(200);
+        myStepper_1.setAcceleration(200);
+        myStepper_2.setMaxSpeed(400); // speed for motors 1 and 2
+        myStepper_1.setMaxSpeed(400);
+
         myStepper_2.moveTo(targ_pos_2);
-        myStepper_2.setMaxSpeed(500);
-
-        myStepper_1.setAcceleration(10000);
         myStepper_1.moveTo(targ_pos_1);
-        myStepper_1.setMaxSpeed(500);
 
-        while (myStepper_2.distanceToGo()!=0){ //execute commands
-          myStepper_1.runSpeed();
-          myStepper_2.runSpeed();
+        while (myStepper_2.distanceToGo()!=0 && myStepper_1.distanceToGo()!=0){ //execute commands
+          myStepper_1.run();
+          myStepper_2.run();
           new_string();
-        }    
+        }
         Serial.println(myStepper_1.currentPosition()); //finish positions, centered
         Serial.println(myStepper_2.currentPosition());
         Serial.println("Centered");
+        myStepper_2.setMaxSpeed(3000); // speed for motors 1 and 2
+        myStepper_1.setMaxSpeed(3000);
       }
-      
+
 
       //=====================================================================================================================
       //dimple using the third motor
@@ -620,7 +616,7 @@ void loop() {
 
           new_string(); // I assume this is some function you want to run repeatedly during this process?
         }
-        
+
         digitalWrite(RelayPin, HIGH); //electrodes on
         delay(TimeD); //time delay
         digitalWrite(RelayPin, LOW);//electrodes off
@@ -637,8 +633,10 @@ void loop() {
           myStepper_2.run();
           myStepper_1.run();
           new_string();
-        }    
+        }
         Serial.println("Dimple complete");
+        myStepper_2.setMaxSpeed(3000); // speed for motors 1 and 2
+        myStepper_1.setMaxSpeed(3000);
       }
       // =============================================================================================================
       // Calibrate Knife position

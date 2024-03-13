@@ -1041,8 +1041,10 @@ class GUIcontrol:
             self.elec_toggle_button.config(text="Electrode Off", bg="green")
 
     def tension_button_pressed(self):
-        self.motor_control.move_motor_1(speed=50, steps=-100)
-        pass
+        thread = threading.Thread(target=self.motor_control.move_motor_1, args=(10, -10))
+
+        # Start the thread.
+        thread.start()
 
     def toggle_electrode_state_button_pressed(self):
         self.arduino_control.toggle_electrodes_state()
