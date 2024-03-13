@@ -456,6 +456,8 @@ class MotorControl:
             time.sleep(0.1)  # Wait for a short period before checking again
         self.power_meter.save_power_meter_data()
 
+        self.center_taper()
+
     def automate_taper(self):
 
         time.sleep(0.1)
@@ -738,8 +740,8 @@ class GUIcontrol:
         self.Tension_2_entry.grid(row=5, column=1, pady=2)
 
     def dynamic_button_setup(self):
-        self.Automate_taper_bezier_button = tk.Button(self.dynamic_button_frame, text="Taper Bezier", font=("Arial", 10),
-                                                command=self.taper_bezier_button_pressed, pady=10)
+        self.taper_bezier_button = tk.Button(self.dynamic_button_frame, text="Taper Bezier", font=("Arial", 10),
+                                             command=self.taper_bezier_button_pressed, pady=10)
         self.Automate_dimple_button = tk.Button(self.dynamic_button_frame, text="Taper & Dimple", font=("Arial", 10),
                                                 command=self.taper_dimple_button_pressed, pady=10)
         self.Automate_taper_button = tk.Button(self.dynamic_button_frame, text="Taper Linear", font=("Arial", 10),
@@ -762,10 +764,10 @@ class GUIcontrol:
 
         # Dynamic Button Frame placement
 
-        self.send_parameters_button.grid(row=0, column=0, pady=5, sticky="nsew")
-        self.Automate_taper_bezier_button.grid(row=1, column=0, pady=5, sticky="nsew")
+        self.taper_bezier_button.grid(row=0, column=0, pady=5, sticky="nsew")
+        self.Automate_dimple_button.grid(row=1, column=0, pady=5, sticky="nsew")
         self.Automate_taper_button.grid(row=2, column=0, pady=5,  sticky="nsew")
-        self.Automate_dimple_button.grid(row=3, column=0, pady=5, sticky="nsew")
+        self.send_parameters_button.grid(row=3, column=0, pady=5, sticky="nsew")
         self.Tension_button.grid(row=4, column=0, pady=5, sticky="nsew")
         self.Fiber_broken_button.grid(row=5, column=0, pady=5, sticky="nsew")
         self.elec_toggle_button.grid(row=6, column=0, pady=5,  sticky="nsew")
